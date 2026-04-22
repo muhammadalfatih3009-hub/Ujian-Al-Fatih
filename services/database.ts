@@ -84,13 +84,28 @@ export const db = {
     }, { onConflict: 'exam_id,peserta_id' });
   },
   getAllResults: async (): Promise<ExamResult[]> => {
-    const { data } = await supabase.from('results').select('*, students(name), subjects(name)');
-    if(!data) return [];
-    return data.map(d => ({
-        id: d.id, studentId: d.peserta_id, examId: d.exam_id, score: d.score, submittedAt: d.finish_time,
-        studentName: d.students?.name, examTitle: d.subjects?.name,
-        totalQuestions: 0, cheatingAttempts: d.violation_count || 0, answers: d.answers, status: d.status
-    }));
+    const [resultsRes, studentsRes, subjectsRes] = await Promise.all([
+        supabase.from('results').select('*'),
+        supabase.from('students').select('id, name'),
+        supabase.from('subjects').select('id, name')
+    ]);
+
+    const data = resultsRes.data || [];
+    const students = studentsRes.data || [];
+    const subjects = subjectsRes.data || [];
+
+    return data.map(d => {
+        const student = students.find(s => s.id === d.peserta_id);
+        const subject = subjects.find(s => s.id === d.exam_id);
+        return {
+            id: d.id, studentId: d.peserta_id, examId: d.exam_id, 
+            score: d.score, submittedAt: d.finish_time,
+            studentName: student?.name || 'Unknown', 
+            examTitle: subject?.name || 'Unknown',
+            totalQuestions: 0, cheatingAttempts: d.violation_count || 0, 
+            answers: d.answers, status: d.status
+        };
+    });
   },
   getUsers: async (): Promise<User[]> => {
     const { data: students } = await supabase.from('students').select(`
