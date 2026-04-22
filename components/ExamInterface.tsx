@@ -1196,17 +1196,17 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
 
       {/* Frozen Overlay (JOS JIS SYSTEM) */}
       {isFrozen && (
-          <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center text-center p-8 backdrop-blur-xl">
-              <ShieldAlert className="w-24 h-24 text-red-500 mb-6 animate-pulse" />
-              <h2 className="text-4xl font-black text-white mb-2 uppercase tracking-widest">SISTEM TERKUNCI</h2>
-              <p className="text-red-400 text-xl mb-8 font-bold">Terdeteksi Aktivitas Mencurigakan! (Pelanggaran #{cheatingAttempts})</p>
+          <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center text-center p-4 md:p-8 backdrop-blur-xl">
+              <ShieldAlert className="w-16 h-16 md:w-24 md:h-24 text-red-500 mb-4 md:mb-6 animate-pulse" />
+              <h2 className="text-2xl md:text-4xl font-black text-white mb-2 uppercase tracking-widest">SISTEM TERKUNCI</h2>
+              <p className="text-red-400 text-base md:text-xl mb-6 md:mb-8 font-bold px-4">Terdeteksi Aktivitas Mencurigakan! (Pelanggaran #{cheatingAttempts})</p>
               
-              <div className="w-64 h-64 relative flex items-center justify-center">
+              <div className="w-48 h-48 md:w-64 md:h-64 relative flex items-center justify-center">
                   <div className="absolute inset-0 rounded-full border-4 border-gray-700"></div>
                   <div className="absolute inset-0 rounded-full border-t-4 border-red-500 animate-spin"></div>
-                  <div className="text-6xl font-mono font-bold text-white">{freezeTimeLeft > 0 ? freezeTimeLeft : 0}</div>
+                  <div className="text-5xl md:text-6xl font-mono font-bold text-white">{freezeTimeLeft > 0 ? freezeTimeLeft : 0}</div>
               </div>
-              <p className="text-gray-400 mt-8 max-w-md">Layar Anda dibekukan karena terdeteksi meninggalkan halaman ujian. Waktu pembekuan akan <strong>BERLIPAT GANDA</strong> jika Anda mengulanginya lagi.</p>
+              <p className="text-gray-400 mt-6 md:mt-8 text-sm md:text-base max-w-[90%] md:max-w-md px-2">Layar Anda dibekukan karena terdeteksi meninggalkan halaman ujian. Waktu pembekuan akan <strong>BERLIPAT GANDA</strong> jika Anda mengulanginya lagi.</p>
               
               {freezeTimeLeft <= 0 && (
                   <button 
@@ -1216,9 +1216,10 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
                           }
                           setIsFrozen(false);
                       }}
-                      className="mt-8 px-8 py-4 bg-red-600 text-white font-bold rounded-full text-xl animate-bounce shadow-[0_0_20px_rgba(220,38,38,0.5)] hover:bg-red-500 transition"
+                      className="mt-8 px-6 py-3 md:px-8 md:py-4 bg-red-600 text-white font-bold rounded-full text-base md:text-xl animate-bounce shadow-[0_0_20px_rgba(220,38,38,0.5)] hover:bg-red-500 transition w-[90%] md:w-auto"
                   >
-                      Kembali ke Ujian (Layar Penuh)
+                      Kembali ke Ujian 
+                      <span className="block text-xs md:text-sm font-normal opacity-90">(Layar Penuh)</span>
                   </button>
               )}
           </div>
@@ -1227,10 +1228,10 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
       {/* TIME ALERT POPUP (WARNING 5 MIN / 1 MIN) */}
       {timeAlert && (
           <div className="fixed inset-0 z-[80] flex items-center justify-center pointer-events-none px-4">
-              <div className="bg-orange-500 text-white px-8 py-6 rounded-2xl shadow-2xl flex flex-col items-center animate-in zoom-in duration-300 border-4 border-white ring-4 ring-orange-200/50 max-w-sm w-full text-center">
-                  <Clock size={48} className="mb-3 animate-pulse text-white drop-shadow-md" />
-                  <h2 className="text-2xl font-bold mb-1 leading-tight">{timeAlert.title}</h2>
-                  <p className="font-medium text-orange-100 text-sm uppercase tracking-wider">{timeAlert.subtitle}</p>
+              <div className="bg-orange-500 text-white px-6 py-5 md:px-8 md:py-6 rounded-2xl shadow-2xl flex flex-col items-center animate-in zoom-in duration-300 border-4 border-white ring-4 ring-orange-200/50 max-w-[90%] md:max-w-sm w-full text-center">
+                  <Clock size={40} className="mb-2 md:mb-3 animate-pulse text-white drop-shadow-md" />
+                  <h2 className="text-lg md:text-2xl font-bold mb-1 leading-tight">{timeAlert.title}</h2>
+                  <p className="font-medium text-orange-100 text-xs md:text-sm uppercase tracking-wider">{timeAlert.subtitle}</p>
               </div>
           </div>
       )}
