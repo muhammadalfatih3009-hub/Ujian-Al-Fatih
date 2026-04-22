@@ -84,7 +84,7 @@ const quillModules = {
         [{ 'script': 'sub'}, { 'script': 'super' }],
         [{ 'list': 'ordered'}, { 'list': 'bullet' }],
         [{ 'align': [] }],
-        ['link', 'image', 'formula'],
+        ['link', 'image', 'video', 'formula'],
         ['clean']
     ],
     imageResize: {
@@ -96,7 +96,7 @@ const quillOptionModules = {
     toolbar: [
         ['bold', 'italic', 'underline'],
         [{ 'script': 'sub'}, { 'script': 'super' }],
-        ['formula', 'image'],
+        ['formula', 'image', 'video'],
         ['clean']
     ],
 };
@@ -485,9 +485,46 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
           setUsers(prevUsers => {
               return prevUsers.map(u => {
                   const updatedStudent = students.find((s: any) => s.id === u.id);
-                  if (updatedStudent) {
-                      return { ...u, status: updatedStudent.status, is_login: updatedStudent.is_login, room: updatedStudent.room || u.room };
+                  const studentResults = lightweightResults.filter((r: any) => r.peserta_id === u.id);
+                  
+                  let derivedStatus: string | undefined = undefined;
+                  
+                  // Filter by selected exam subject if monitoring Subject Filter is set
+                  const relevantResults = monitoringSubjectFilter && monitoringSubjectFilter !== 'ALL' 
+                      ? studentResults.filter((r: any) => r.exam_id === monitoringSubjectFilter) 
+                      : studentResults;
+
+                  if (relevantResults.length > 0) {
+                      const workingResult = relevantResults.find((r: any) => r.status === 'working');
+                      const blockedResult = relevantResults.find((r: any) => r.status === 'blocked');
+                      
+                      if (blockedResult) {
+                          derivedStatus = 'blocked';
+                      } else if (workingResult) {
+                          derivedStatus = 'working';
+                      } else {
+                          // if all relevant results are finished
+                          derivedStatus = 'finished';
+                      }
+                  } else if (updatedStudent && updatedStudent.is_login) {
+                      derivedStatus = 'login';
                   }
+
+                  if (updatedStudent) {
+                      return { 
+                          ...u, 
+                          status: derivedStatus || (updatedStudent.is_login ? 'login' : undefined), 
+                          is_login: updatedStudent.is_login, 
+                          room: updatedStudent.room || u.room 
+                      };
+                  }
+                  
+                  // Handle users that weren't returned in lightweight (maybe inactive)
+                  if (studentResults.length > 0) {
+                       const working = studentResults.find((r: any) => r.status === 'working');
+                       return { ...u, status: working ? 'working' : 'finished' };
+                  }
+                  
                   return u;
               });
           });
@@ -506,18 +543,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                           submittedAt: lr.finish_time
                       };
                   } else {
-                      // If it's a completely new result, we might not have studentName/examTitle easily available
-                      // But usually they are added during loadData. If needed, we can just push it.
-                      // For monitoring, we mainly care about updates.
+                      // Find matching names
+                      const matchedStudent = students.find((s: any) => s.id === lr.peserta_id);
+                      const matchedExam = exams.find((e: any) => e.id === lr.exam_id);
+                      
                       newResults.push({
                           id: lr.id,
-                          studentId: lr.siswa_id,
-                          studentName: 'Unknown', // Will be fixed on full load
+                          studentId: lr.peserta_id,
+                          studentName: matchedStudent ? matchedStudent.name : 'Unknown',
                           examId: lr.exam_id,
-                          examTitle: 'Unknown',
-                          score: Number(lr.score),
-                          submittedAt: lr.finish_time,
-                          totalQuestions: 0,
+                          examTitle: matchedExam ? matchedExam.title : 'Unknown',
+                          score: Number(lr.score) || 0,
+                          submittedAt: lr.finish_time || new Date().toISOString(),
+                          totalQuestions: matchedExam ? (matchedExam.questionCount || 0) : 0,
                           cheatingAttempts: lr.violation_count || 0,
                           status: lr.status
                       });
@@ -535,7 +573,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
     
     // Auto refresh for Monitoring & Anti-Cheat tab
     let interval: any;
-    if (activeTab === 'MONITORING' || activeTab === 'ANTI_CHEAT') {
+    if (activeTab === 'MONITORING' || activeTab === 'ANTI_CHEAT' || activeTab === 'DASHBOARD') {
         interval = setInterval(() => {
             refreshMonitoringData();
         }, 10000); // Increased to 10 seconds to save egress
@@ -2500,7 +2538,8 @@ ANS: B`;
       if (u.status === 'blocked') return { color: 'bg-red-600 text-white border-red-700 animate-pulse', label: 'TERKUNCI (MELANGGAR)' };
       if (u.status === 'finished') return { color: 'bg-green-100 text-green-700 border-green-200', label: 'Selesai' };
       if (u.status === 'working') return { color: 'bg-blue-100 text-blue-700 border-blue-200', label: 'Mengerjakan' };
-      return { color: 'bg-red-100 text-red-700 border-red-200', label: 'Belum Login' };
+      if (u.is_login || u.status === 'login') return { color: 'bg-yellow-100 text-yellow-700 border-yellow-200', label: 'Sudah Login' };
+      return { color: 'bg-gray-100 text-gray-500 border-gray-200', label: 'Belum Login' };
   };
   
   // -- BULK ACTION LOGIC --
@@ -3205,7 +3244,7 @@ ANS: B`;
                         <ArrowRight className="text-gray-300 group-hover:text-gray-600 transition-colors" size={16}/>
                     </div>
                     <div className="space-y-1">
-                        <h3 className="text-3xl font-bold text-gray-800">{users.filter(u => u.status === 'working').length}</h3>
+                        <h3 className="text-3xl font-bold text-gray-800">{users.filter(u => u.status === 'working' || u.status === 'login' || u.is_login).length}</h3>
                         <p className="text-sm font-medium text-gray-500">Peserta Online</p>
                         <p className="text-[10px] text-gray-400 mt-2">{users.filter(u => u.status === 'working').length} sedang mengerjakan</p>
                     </div>
@@ -3233,13 +3272,13 @@ ANS: B`;
                         <ArrowRight className="text-gray-300 group-hover:text-gray-600 transition-colors" size={16}/>
                     </div>
                     <div className="space-y-1">
-                        <h3 className="text-3xl font-bold text-gray-800">{results.length}</h3>
+                        <h3 className="text-3xl font-bold text-gray-800">{results.filter(r => r.status === 'finished').length}</h3>
                         <p className="text-sm font-medium text-gray-500">Ujian Selesai</p>
                         <p className="text-[10px] text-gray-400 mt-2">Hasil ujian tersimpan</p>
                     </div>
                 </div>
 
-                <div onClick={() => setActiveTab('MONITORING')} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition cursor-pointer group">
+                <div onClick={() => setActiveTab('ANTI_CHEAT')} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition cursor-pointer group">
                     <div className="flex justify-between items-start mb-4">
                         <div className="bg-red-50 p-3 rounded-xl group-hover:scale-110 transition-transform">
                             <TriangleAlert className="text-red-600" size={24}/>
@@ -3337,10 +3376,10 @@ ANS: B`;
                         <Activity className="mr-2 text-purple-600" size={18}/> Aktivitas Terkini
                     </h3>
                     <div className="space-y-4">
-                        {results.length === 0 ? (
-                            <div className="text-center text-gray-400 italic p-8">Belum ada aktivitas ujian.</div>
+                        {results.filter(r => r.status === 'finished').length === 0 ? (
+                            <div className="text-center text-gray-400 italic p-8">Belum ada aktivitas ujian selesai.</div>
                         ) : (
-                            results.slice(0, 5).map(r => (
+                            results.filter(r => r.status === 'finished').sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()).slice(0, 5).map(r => (
                                 <div key={r.id} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition border border-transparent hover:border-gray-100">
                                     <div className="flex items-center gap-4">
                                         <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs">
@@ -4402,8 +4441,8 @@ ANS: B`;
                                   <th className="p-4 cursor-pointer hover:text-blue-600" onClick={() => handleResultSort('class')}>Kelas {resultSort.column === 'class' && (resultSort.direction === 'asc' ? '↑' : '↓')}</th>
                                   <th className="p-4 cursor-pointer hover:text-blue-600" onClick={() => handleResultSort('school')}>Sekolah {resultSort.column === 'school' && (resultSort.direction === 'asc' ? '↑' : '↓')}</th>
                                   <th className="p-4 cursor-pointer hover:text-blue-600" onClick={() => handleResultSort('examTitle')}>Mapel {resultSort.column === 'examTitle' && (resultSort.direction === 'asc' ? '↑' : '↓')}</th>
-                                  <th className="p-4 cursor-pointer hover:text-blue-600" onClick={() => handleResultSort('score')}>Nilai {resultSort.column === 'score' && (resultSort.direction === 'asc' ? '↑' : '↓')}</th>
-                                  <th className="p-4 cursor-pointer hover:text-blue-600" onClick={() => handleResultSort('submittedAt')}>Waktu Submit {resultSort.column === 'submittedAt' && (resultSort.direction === 'asc' ? '↑' : '↓')}</th>
+                                  <th className="p-4 cursor-pointer hover:text-blue-600 text-center" onClick={() => handleResultSort('score')}>Nilai {resultSort.column === 'score' && (resultSort.direction === 'asc' ? '↑' : '↓')}</th>
+                                  <th className="p-4 cursor-pointer hover:text-blue-600 text-center" onClick={() => handleResultSort('submittedAt')}>Waktu Submit {resultSort.column === 'submittedAt' && (resultSort.direction === 'asc' ? '↑' : '↓')}</th>
                               </tr>
                           </thead>
                           <tbody className="divide-y">
@@ -4449,10 +4488,10 @@ ANS: B`;
                                         <td className="p-4 text-gray-600">{student?.class || '-'}</td>
                                         <td className="p-4 text-gray-600">{student?.school || '-'}</td>
                                         <td className="p-4 text-gray-700">{r.examTitle}</td>
-                                        <td className="p-4">
+                                        <td className="p-4 text-center">
                                             <span className="font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">{r.score}</span>
                                         </td>
-                                        <td className="p-4 text-gray-500 text-xs">{new Date(r.submittedAt).toLocaleString()}</td>
+                                        <td className="p-4 text-gray-500 text-xs text-center">{r.submittedAt ? (isNaN(new Date(r.submittedAt).getTime()) ? <span className="italic">Data Selesai</span> : new Date(r.submittedAt).toLocaleString('id-ID', {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'})) : <span className="italic text-gray-400">Tidak tersedia</span>}</td>
                                     </tr>
                                   );
                                 })
@@ -6181,13 +6220,33 @@ ANS: B`;
                           </div>
 
                           <div className="mb-4">
-                              <label className="block text-xs font-bold text-gray-500 mb-1">URL Gambar Khusus Soal (Opsional)</label>
+                              <label className="block text-xs font-bold text-gray-500 mb-1">URL Gambar/Video Khusus Soal (Opsional)</label>
                               <input 
                                   className="w-full border rounded-lg p-3 text-sm focus:ring-2 focus:ring-purple-500 outline-none transition" 
-                                  placeholder="Masukkan URL gambar lengkap (Contoh: https://example.com/image.jpg)" 
+                                  placeholder="Masukkan URL gambar atau video lengkap (Contoh: https://example.com/video.mp4 atau Youtube)" 
                                   value={nqImg} 
                                   onChange={e => setNqImg(e.target.value)}
                               />
+                              {nqImg && nqImg.trim() !== '' && (
+                                  <div className="mt-2 border rounded-lg p-2 bg-gray-50">
+                                      <p className="text-[10px] text-gray-400 font-bold mb-2 uppercase">Preview Media</p>
+                                      {nqImg.match(/\.(mp4|webm|ogg)$/i) || nqImg.includes('youtube.com') || nqImg.includes('youtu.be') ? (
+                                          <iframe 
+                                              src={nqImg.includes('youtube.com/watch') ? nqImg.replace('watch?v=', 'embed/').split('&')[0] : (nqImg.includes('youtu.be/') ? `https://www.youtube.com/embed/${nqImg.split('youtu.be/')[1].split('?')[0]}` : nqImg)} 
+                                              className="w-full max-w-sm h-48 rounded" 
+                                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                              allowFullScreen
+                                          ></iframe>
+                                      ) : (
+                                          <img 
+                                              src={nqImg} 
+                                              alt="Preview" 
+                                              className="max-w-xs max-h-48 object-contain rounded border border-gray-200" 
+                                              onError={(e) => (e.currentTarget.style.display = 'none')}
+                                          />
+                                      )}
+                                  </div>
+                              )}
                           </div>
 
                           {nqType === 'PG' && (

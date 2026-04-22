@@ -515,7 +515,7 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
     if (isFrozen) return;
 
     if (settings.antiCheat.enableSound) {
-        playAlertSound();
+        playAlertSound(7);
     }
     
     // CALCULATE EXPONENTIAL FREEZE TIME (Jos Jis System)
@@ -1304,24 +1304,33 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
         {/* Left: Question (60%) */}
         <div className="w-full md:w-[60%] bg-white p-4 md:p-6 exam-content border-r border-gray-100 overflow-x-hidden">
             {currentQ.imgUrl && currentQ.imgUrl.trim() !== '' && (
-                 <div 
-                    className="mb-4 max-w-full relative group overflow-hidden rounded-lg cursor-zoom-in"
-                    onMouseMove={handleImageMouseMove}
-                    onClick={() => setPreviewImage(currentQ.imgUrl || null)}
-                    style={{ '--zoom-x': '50%', '--zoom-y': '50%' } as React.CSSProperties}
-                 >
-                     <img 
-                        src={currentQ.imgUrl} 
-                        alt="Soal" 
-                        className="w-full h-auto object-contain transition-transform duration-200 ease-out group-hover:scale-[2.5]"
-                        style={{ transformOrigin: 'var(--zoom-x) var(--zoom-y)' }}
-                        onError={(e) => e.currentTarget.parentElement!.style.display = 'none'} 
-                     />
-                     
-                     {/* Magnifier Hint Overlay */}
-                     <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm text-white text-[10px] px-2 py-1 rounded-full opacity-80 transition-opacity pointer-events-none flex items-center group-hover:opacity-0">
-                        <Maximize2 size={12} className="mr-1"/> Klik untuk Memperbesar
-                     </div>
+                 <div className="mb-4 max-w-full relative group overflow-hidden rounded-lg">
+                     {currentQ.imgUrl.match(/\.(mp4|webm|ogg)$/i) || currentQ.imgUrl.includes('youtube.com') || currentQ.imgUrl.includes('youtu.be') ? (
+                         <iframe 
+                             src={currentQ.imgUrl.includes('youtube.com/watch') ? currentQ.imgUrl.replace('watch?v=', 'embed/').split('&')[0] : (currentQ.imgUrl.includes('youtu.be/') ? `https://www.youtube.com/embed/${currentQ.imgUrl.split('youtu.be/')[1].split('?')[0]}` : currentQ.imgUrl)} 
+                             className="w-full aspect-video rounded-lg" 
+                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                             allowFullScreen
+                         ></iframe>
+                     ) : (
+                         <div 
+                             className="cursor-zoom-in"
+                             onMouseMove={handleImageMouseMove}
+                             onClick={() => setPreviewImage(currentQ.imgUrl || null)}
+                             style={{ '--zoom-x': '50%', '--zoom-y': '50%' } as React.CSSProperties}
+                         >
+                             <img 
+                                src={currentQ.imgUrl} 
+                                alt="Soal" 
+                                className="w-full h-auto object-contain transition-transform duration-200 ease-out group-hover:scale-[2.5]"
+                                style={{ transformOrigin: 'var(--zoom-x) var(--zoom-y)' }}
+                                onError={(e) => e.currentTarget.parentElement!.style.display = 'none'} 
+                             />
+                             <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm text-white text-[10px] px-2 py-1 rounded-full opacity-80 transition-opacity pointer-events-none flex items-center group-hover:opacity-0">
+                                <Maximize2 size={12} className="mr-1"/> Klik untuk Memperbesar
+                             </div>
+                         </div>
+                     )}
                  </div>
             )}
             <div ref={questionRef} className="overflow-hidden bg-white mb-4">
@@ -1475,14 +1484,6 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
           </div>
       )}
 
-      {/* Floating Footer */}
-      {settings.footerText && (
-          <div className="fixed bottom-0 left-0 w-full z-40 px-4 py-2 pointer-events-none flex justify-center">
-              <div className="bg-white/90 backdrop-blur border border-gray-200 shadow-xl rounded-t-lg px-6 py-2 text-[10px] text-gray-500 font-medium tracking-wide">
-                  {settings.footerText}
-              </div>
-          </div>
-      )}
     </div>
   );
 };
