@@ -108,24 +108,31 @@ export const db = {
     });
   },
   getUsers: async (): Promise<User[]> => {
-    const { data: students } = await supabase.from('students').select(`
-        *,
-        student_exam_mapping(id, subject_id, exam_date, room, session)
-    `);
-    const { data: staff } = await supabase.from('staff').select('*');
+    const [studentsRes, staffRes, mappingRes] = await Promise.all([
+        supabase.from('students').select('*'),
+        supabase.from('staff').select('*'),
+        supabase.from('student_exam_mapping').select('*')
+    ]);
+
+    const students = studentsRes.data || [];
+    const staff = staffRes.data || [];
+    const mappingsData = mappingRes.data || [];
     
     let allUsers: User[] = [];
-    if(students) {
-        allUsers = allUsers.concat(students.map(d => ({
-            id: d.id, name: d.name, username: d.nomor_peserta, role: UserRole.STUDENT,
-            school: d.school, npsn: d.npsn, class: d.class, room: d.room, gender: d.gender, nomorPeserta: d.nomor_peserta,
-            birthDate: d.birth_date, password: d.password, isLogin: d.is_login,
-            mappings: (d.student_exam_mapping || []).map((m: any) => ({
-                id: m.id, studentId: d.id, examId: m.subject_id, examDate: m.exam_date, room: m.room, session: m.session
-            }))
-        })));
+    if(students.length > 0) {
+        allUsers = allUsers.concat(students.map(d => {
+            const studentMappings = mappingsData.filter(m => m.student_id === d.id);
+            return {
+                id: d.id, name: d.name, username: d.nomor_peserta, role: UserRole.STUDENT,
+                school: d.school, npsn: d.npsn, class: d.class, room: d.room, gender: d.gender, nomorPeserta: d.nomor_peserta,
+                birthDate: d.birth_date, password: d.password, isLogin: d.is_login,
+                mappings: studentMappings.map((m: any) => ({
+                    id: m.id, studentId: d.id, examId: m.subject_id, examDate: m.exam_date, room: m.room, session: m.session
+                }))
+            };
+        }));
     }
-    if (staff) {
+    if (staff.length > 0) {
         allUsers = allUsers.concat(staff.map(d => ({
             id: d.id, name: d.name, username: d.username, password: d.password, role: d.role as UserRole,
             room: d.room, school: d.school, npsn: d.npsn

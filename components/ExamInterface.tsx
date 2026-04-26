@@ -916,9 +916,18 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
                             }}
                           >
                               <option value="">Pilih Jawaban...</option>
-                              {rightSides.map((right: string, rIdx: number) => (
-                                  <option key={rIdx} value={right}>{right.replace(/<[^>]*>/g, '')}</option>
-                              ))}
+                              {rightSides.map((right: string, rIdx: number) => {
+                                  const textContent = right.replace(/<[^>]*>?/gm, '');
+                                  let decoded = textContent;
+                                  if (typeof document !== 'undefined') {
+                                      const tempEl = document.createElement('textarea');
+                                      tempEl.innerHTML = textContent;
+                                      decoded = tempEl.value;
+                                  }
+                                  return (
+                                    <option key={rIdx} value={right}>{decoded}</option>
+                                  );
+                              })}
                           </select>
                       </div>
                   ))}

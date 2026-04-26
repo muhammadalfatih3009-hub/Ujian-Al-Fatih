@@ -690,10 +690,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
       let filteredResults = r;
 
       if (user.role === UserRole.PROKTOR) {
-          filteredUsers = u.filter(student => 
-              student.school === user.school && 
-              student.mappings?.some(m => m.room === user.room)
-          );
+          if (user.school) {
+              filteredUsers = filteredUsers.filter(student => student.school === user.school);
+          }
+          if (user.room) {
+              filteredUsers = filteredUsers.filter(student => student.room === user.room || student.mappings?.some(m => m.room === user.room));
+          }
           const studentIds = new Set(filteredUsers.map(student => student.id));
           filteredResults = r.filter(res => studentIds.has(res.studentId));
       }
@@ -3478,11 +3480,11 @@ ANS: B`;
                   </>
               )}
               
-              {(user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN || user.role === UserRole.PROKTOR) && (
+              {(user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN) && (
                   <NavItem id="CETAK_KARTU" label="Cetak Kartu" icon={Printer} />
               )}
               
-              {(user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN || user.role === UserRole.PROKTOR || user.role === UserRole.PENGAWAS) && (
+              {(user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN || user.role === UserRole.PENGAWAS) && (
                   <NavItem id="DAFTAR_HADIR" label="Cetak Daftar Hadir" icon={FileText} />
               )}
               
@@ -4471,8 +4473,15 @@ ANS: B`;
                                         case 'class': valA = stA?.class || ''; valB = stB?.class || ''; break;
                                         case 'school': valA = stA?.school || ''; valB = stB?.school || ''; break;
                                         case 'examTitle': valA = a.examTitle; valB = b.examTitle; break;
-                                        case 'score': valA = a.score; valB = b.score; break;
-                                        case 'submittedAt': valA = new Date(a.submittedAt).getTime(); valB = new Date(b.submittedAt).getTime(); break;
+                                        case 'score': valA = a.score || 0; valB = b.score || 0; break;
+                                        case 'submittedAt': valA = a.submittedAt ? new Date(a.submittedAt).getTime() : NaN; valB = b.submittedAt ? new Date(b.submittedAt).getTime() : NaN; break;
+                                    }
+                                    
+                                    if (resultSort.column === 'submittedAt') {
+                                        const aIsNaN = isNaN(valA) || !valA;
+                                        const bIsNaN = isNaN(valB) || !valB;
+                                        if (aIsNaN && !bIsNaN) return resultSort.direction === 'asc' ? -1 : -1; // Force NaN to top
+                                        if (!aIsNaN && bIsNaN) return resultSort.direction === 'asc' ? 1 : 1; 
                                     }
                                     
                                     if (valA < valB) return resultSort.direction === 'asc' ? -1 : 1;
@@ -4659,7 +4668,7 @@ ANS: B`;
                                                                                ? studentAnswer?.answer.split(',').map((s: string) => parseInt(s.trim())).includes(i)
                                                                                : studentAnswer?.answer == i)
                                                                        : (typeof studentAnswer?.answer === 'string' 
-                                                                           ? studentAnswer.answer === opt 
+                                                                           ? studentAnswer.answer === opt || studentAnswer.answer.replace(/\s+/g, '') === opt.replace(/\s+/g, '') 
                                                                            : studentAnswer?.answer == i);
                                                                    
                                                                    const isCompChoice = q.type === 'PG_KOMPLEKS'
@@ -4671,7 +4680,7 @@ ANS: B`;
                                                                                ? compAnswer?.answer.split(',').map((s: string) => parseInt(s.trim())).includes(i)
                                                                                : compAnswer?.answer == i)
                                                                        : (typeof compAnswer?.answer === 'string' 
-                                                                           ? compAnswer.answer === opt 
+                                                                           ? compAnswer.answer === opt || compAnswer.answer.replace(/\s+/g, '') === opt.replace(/\s+/g, '') 
                                                                            : compAnswer?.answer == i);
 
                                                                    const isCorrectChoice = q.type === 'PG_KOMPLEKS'
@@ -4679,33 +4688,33 @@ ANS: B`;
                                                                        : q.correctIndex === i;
                                                                    
                                                                    let bgColor = 'bg-white border-gray-200';
-                                                                    if (isStudentChoice && !isCorrectChoice) bgColor = 'bg-red-50 border-red-200 ring-1 ring-red-300';
-                                                                    if (isCorrectChoice) bgColor = 'bg-green-50 border-green-200 ring-1 ring-green-300';
+                                                                    if (isStudentChoice && !isCorrectChoice) bgColor = 'bg-red-50 border-red-200 ring-2 ring-red-400';
+                                                                    if (isCorrectChoice) bgColor = 'bg-green-50 border-green-200 ring-2 ring-green-400';
 
                                                                    
                                                                    
                                                                    return (
-                                                                       <div key={i} className={`p-3 rounded-xl border flex items-center gap-3 relative overflow-hidden ${bgColor}`}>
-                                                                           <div className={`w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold border ${isCorrectChoice ? 'bg-green-500 text-white border-green-600' : (isStudentChoice ? 'bg-red-500 text-white border-red-600' : 'bg-white text-gray-400')}`}>
+                                                                       <div key={i} className={`p-4 rounded-xl border-2 flex items-center gap-3 relative overflow-hidden transition-all ${bgColor}`}>
+                                                                           <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold border-2 shadow-sm ${isCorrectChoice ? 'bg-green-500 text-white border-green-600' : (isStudentChoice ? 'bg-red-500 text-white border-red-600' : 'bg-gray-50 text-gray-400 border-gray-200')}`}>
                                                                                {String.fromCharCode(65 + i)}
                                                                            </div>
-                                                                           <div className={`text-sm flex-1 ql-editor !p-0 !min-h-0 prose prose-sm max-w-none ${isCorrectChoice ? 'font-bold text-green-900' : (isStudentChoice ? 'font-bold text-red-900' : 'text-gray-700')}`} dangerouslySetInnerHTML={{ __html: opt }}></div>
+                                                                           <div className={`text-base flex-1 ql-editor !p-0 !min-h-0 prose max-w-none ${isCorrectChoice ? 'font-bold text-green-900' : (isStudentChoice ? 'font-bold text-red-900' : 'text-gray-700')}`} dangerouslySetInnerHTML={{ __html: opt }}></div>
                                                                            
-                                                                           <div className="ml-auto flex-shrink-0 flex flex-col items-end gap-1">
+                                                                           <div className="ml-auto flex-shrink-0 flex flex-col items-end gap-1.5">
                                                                                 {isCorrectChoice && (
-                                                                                    <span className="text-[8px] font-black px-1.5 py-0.5 rounded uppercase bg-green-600 text-white">
-                                                                                        Kunci
+                                                                                    <span className="text-[10px] font-black px-2 py-1 rounded shadow-sm uppercase bg-green-600 text-white">
+                                                                                        Kunci Jawaban
                                                                                     </span>
                                                                                 )}
 
                                                                                {isStudentChoice && (
-                                                                                   <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase ${isCorrectChoice ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
-                                                                                       {(selectedReviewResult.studentName || 'Peserta').split(' ')[0]}
+                                                                                   <span className={`text-[10px] font-black px-2 py-1 rounded shadow-sm uppercase ${isCorrectChoice ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
+                                                                                       Jawaban {(selectedReviewResult.studentName || 'Peserta').split(' ')[0]}
                                                                                    </span>
                                                                                )}
                                                                                {isCompChoice && (
-                                                                                   <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase ${isCorrectChoice ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
-                                                                                       {(comparisonResult?.studentName || 'Peserta').split(' ')[0]}
+                                                                                   <span className={`text-[10px] font-black px-2 py-1 rounded shadow-sm uppercase ${isCorrectChoice ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
+                                                                                       Jawaban {(comparisonResult?.studentName || 'Peserta').split(' ')[0]}
                                                                                    </span>
                                                                                )}
                                                                            </div>
@@ -6250,18 +6259,50 @@ ANS: B`;
                           </div>
 
                           {nqType === 'PG' && (
-                              <div className="space-y-2">
+                              <div className="space-y-4">
                                   <label className="block text-xs font-bold text-gray-500 mb-1">Opsi Jawaban & Kunci</label>
                                   {nqOptions.map((opt, i) => (
-                                      <div key={i} className="flex items-start gap-2">
-                                          <span className="font-bold w-6 text-sm py-3">{String.fromCharCode(65+i)}.</span>
-                                          <ResizableQuill 
-                                              value={opt} 
-                                              onChange={val => {const n = [...nqOptions]; n[i] = val; setNqOptions(n);}} 
-                                              placeholder={`Opsi ${String.fromCharCode(65+i)}`}
-                                          />
-                                          <div className="py-3">
-                                              <input type="radio" name="correct" checked={nqCorrectIndex === i} onChange={() => setNqCorrectIndex(i)} className="w-4 h-4 text-blue-600 cursor-pointer"/>
+                                      <div key={i} className="flex flex-col gap-2 p-3 bg-gray-50 border rounded-lg">
+                                          <div className="flex items-start gap-2">
+                                              <span className="font-bold w-6 text-sm py-3 text-gray-700">{String.fromCharCode(65+i)}.</span>
+                                              <div className="flex-1 w-full bg-white">
+                                                <ResizableQuill 
+                                                    value={opt} 
+                                                    onChange={val => {const n = [...nqOptions]; n[i] = val; setNqOptions(n);}} 
+                                                    placeholder={`Opsi ${String.fromCharCode(65+i)}`}
+                                                />
+                                              </div>
+                                              <div className="py-3 px-2 flex flex-col items-center">
+                                                  <span className="text-[10px] uppercase font-bold text-gray-400 mb-2">Kunci</span>
+                                                  <input type="radio" name="correct" checked={nqCorrectIndex === i} onChange={() => setNqCorrectIndex(i)} className="w-5 h-5 text-blue-600 cursor-pointer"/>
+                                              </div>
+                                          </div>
+                                          <div className="pl-8 flex gap-2 w-full">
+                                              <input 
+                                                  type="text" 
+                                                  placeholder="Tempel URL Gambar (Hemat Egress/Database)..." 
+                                                  className="flex-1 border rounded p-1.5 text-xs outline-none focus:border-blue-400"
+                                                  onKeyDown={(e) => {
+                                                      if (e.key === 'Enter') {
+                                                          const input = e.currentTarget;
+                                                          if (input.value) {
+                                                              const n = [...nqOptions];
+                                                              n[i] = n[i] + `<img src="${input.value}" style="max-width:100%; border-radius:8px; margin-top:8px;"/>`;
+                                                              setNqOptions(n);
+                                                              input.value = '';
+                                                          }
+                                                      }
+                                                  }}
+                                              />
+                                              <button type="button" className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 rounded text-xs font-bold" onClick={(e) => {
+                                                  const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                                                  if (input.value) {
+                                                      const n = [...nqOptions];
+                                                      n[i] = n[i] + `<img src="${input.value}" style="max-width:100%; border-radius:8px; margin-top:8px;"/>`;
+                                                      setNqOptions(n);
+                                                      input.value = '';
+                                                  }
+                                              }}>Sisipkan</button>
                                           </div>
                                       </div>
                                   ))}
@@ -6269,26 +6310,58 @@ ANS: B`;
                           )}
 
                           {nqType === 'PG_KOMPLEKS' && (
-                              <div className="space-y-2">
+                              <div className="space-y-4">
                                   <label className="block text-xs font-bold text-gray-500 mb-1">Opsi Jawaban & Kunci (Bisa lebih dari satu)</label>
                                   {nqOptions.map((opt, i) => (
-                                      <div key={i} className="flex items-start gap-2">
-                                          <span className="font-bold w-6 text-sm py-3">{String.fromCharCode(65+i)}.</span>
-                                          <ResizableQuill 
-                                              value={opt} 
-                                              onChange={val => {const n = [...nqOptions]; n[i] = val; setNqOptions(n);}} 
-                                              placeholder={`Opsi ${String.fromCharCode(65+i)}`}
-                                          />
-                                          <div className="py-3">
+                                      <div key={i} className="flex flex-col gap-2 p-3 bg-gray-50 border rounded-lg">
+                                          <div className="flex items-start gap-2">
+                                              <span className="font-bold w-6 text-sm py-3 text-gray-700">{String.fromCharCode(65+i)}.</span>
+                                              <div className="flex-1 w-full bg-white">
+                                                <ResizableQuill 
+                                                    value={opt} 
+                                                    onChange={val => {const n = [...nqOptions]; n[i] = val; setNqOptions(n);}} 
+                                                    placeholder={`Opsi ${String.fromCharCode(65+i)}`}
+                                                />
+                                              </div>
+                                              <div className="py-3 px-2 flex flex-col items-center">
+                                                  <span className="text-[10px] uppercase font-bold text-gray-400 mb-2">Benar</span>
+                                                  <input 
+                                                      type="checkbox" 
+                                                      checked={nqCorrectIndices.includes(i)} 
+                                                      onChange={(e) => {
+                                                          if (e.target.checked) setNqCorrectIndices([...nqCorrectIndices, i]);
+                                                          else setNqCorrectIndices(nqCorrectIndices.filter(idx => idx !== i));
+                                                      }} 
+                                                      className="w-5 h-5 text-blue-600 cursor-pointer"
+                                                  />
+                                              </div>
+                                          </div>
+                                          <div className="pl-8 flex gap-2 w-full">
                                               <input 
-                                                  type="checkbox" 
-                                                  checked={nqCorrectIndices.includes(i)} 
-                                                  onChange={(e) => {
-                                                      if (e.target.checked) setNqCorrectIndices([...nqCorrectIndices, i]);
-                                                      else setNqCorrectIndices(nqCorrectIndices.filter(idx => idx !== i));
-                                                  }} 
-                                                  className="w-4 h-4 text-blue-600 cursor-pointer"
+                                                  type="text" 
+                                                  placeholder="Tempel URL Gambar (Hemat Egress/Database)..." 
+                                                  className="flex-1 border rounded p-1.5 text-xs outline-none focus:border-blue-400"
+                                                  onKeyDown={(e) => {
+                                                      if (e.key === 'Enter') {
+                                                          const input = e.currentTarget;
+                                                          if (input.value) {
+                                                              const n = [...nqOptions];
+                                                              n[i] = n[i] + `<img src="${input.value}" style="max-width:100%; border-radius:8px; margin-top:8px;"/>`;
+                                                              setNqOptions(n);
+                                                              input.value = '';
+                                                          }
+                                                      }
+                                                  }}
                                               />
+                                              <button type="button" className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 rounded text-xs font-bold" onClick={(e) => {
+                                                  const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                                                  if (input.value) {
+                                                      const n = [...nqOptions];
+                                                      n[i] = n[i] + `<img src="${input.value}" style="max-width:100%; border-radius:8px; margin-top:8px;"/>`;
+                                                      setNqOptions(n);
+                                                      input.value = '';
+                                                  }
+                                              }}>Sisipkan</button>
                                           </div>
                                       </div>
                                   ))}
