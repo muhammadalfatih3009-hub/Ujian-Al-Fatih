@@ -5,7 +5,7 @@ import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import { Exam, ExamResult, User, Question, AppSettings } from '../types';
 import { playAlertSound } from '../utils/sound';
-import { Timer, ChevronRight, ChevronLeft, Grid3X3, CheckCircle, ShieldAlert, ZoomIn, X, Maximize2, Clock, RefreshCcw } from 'lucide-react';
+import { Timer, ChevronRight, ChevronLeft, ChevronDown, Grid3X3, CheckCircle, ShieldAlert, ZoomIn, X, Maximize2, Clock, RefreshCcw } from 'lucide-react';
 import { db } from '../services/database'; // SWITCHED TO REAL DB
 import { Confetti } from './Confetti';
 import { motion, AnimatePresence } from 'motion/react';
@@ -899,38 +899,74 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
           const currentAnswer = (typeof answers[currentQuestionIndex] === 'object' && answers[currentQuestionIndex] !== null && !Array.isArray(answers[currentQuestionIndex])) ? answers[currentQuestionIndex] : {};
 
           return (
-              <div className="space-y-4">
-                  <p className="text-sm italic mb-2" style={{ color: themeColor }}>* Jodohkan pernyataan di kiri dengan jawaban di kanan</p>
-                  {leftSides.map((left, idx) => (
-                      <div key={idx} className="flex flex-col md:flex-row items-center gap-4 bg-gray-50 p-4 rounded-xl border border-gray-200">
-                          <div className="flex-1 font-bold text-gray-700 text-sm ql-editor !p-0 !min-h-0 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: left }}></div>
-                          <div className="hidden md:block text-gray-400">→</div>
-                          <select 
-                            className="flex-1 border rounded-lg p-2 text-sm bg-white focus:ring-2 outline-none"
-                            style={{ '--tw-ring-color': themeColor } as React.CSSProperties}
-                            value={currentAnswer[left] || ''}
-                            onChange={(e) => {
-                                const newAnswers = [...answers];
-                                newAnswers[currentQuestionIndex] = { ...currentAnswer, [left]: e.target.value };
-                                setAnswers(newAnswers);
-                            }}
-                          >
-                              <option value="">Pilih Jawaban...</option>
-                              {rightSides.map((right: string, rIdx: number) => {
-                                  const textContent = right.replace(/<[^>]*>?/gm, '');
-                                  let decoded = textContent;
-                                  if (typeof document !== 'undefined') {
-                                      const tempEl = document.createElement('textarea');
-                                      tempEl.innerHTML = textContent;
-                                      decoded = tempEl.value;
-                                  }
-                                  return (
-                                    <option key={rIdx} value={right}>{decoded}</option>
-                                  );
-                              })}
-                          </select>
+              <div className="space-y-6">
+                  <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg flex items-start gap-2">
+                      <ShieldAlert className="text-blue-500 w-5 h-5 shrink-0 mt-0.5" />
+                      <p className="text-sm text-blue-800 leading-relaxed font-medium">
+                          Pilih opsi yang tepat di <strong>kolom kiri (Pernyataan)</strong> agar sesuai dengan <strong>kolom kanan (Pilihan Jawaban)</strong>.
+                      </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+                      {/* Left Column: Statements */}
+                      <div className="space-y-4">
+                          <h4 className="font-bold text-gray-400 text-xs uppercase tracking-wider mb-2 flex items-center">
+                              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mr-2"></span>
+                              Pernyataan
+                          </h4>
+                          {leftSides.map((left, idx) => {
+                              const selVal = currentAnswer[left];
+                              const rightIdx = rightSides.findIndex((r: string) => r === selVal);
+                              return (
+                                  <div key={idx} className="bg-white p-4 rounded-xl border-2 border-gray-100 shadow-sm relative pr-24 hover:border-gray-300 transition-colors">
+                                      <div className="ql-editor !p-0 !min-h-0 prose prose-sm max-w-none text-sm text-gray-800" dangerouslySetInnerHTML={{ __html: left }}></div>
+                                      
+                                      <div className="absolute top-1/2 -translate-y-1/2 right-3">
+                                          <div className="relative">
+                                              <select 
+                                                className={`border-2 rounded-lg p-2 pr-8 text-sm focus:ring-2 outline-none font-bold text-center cursor-pointer appearance-none ${selVal ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'}`}
+                                                style={{ '--tw-ring-color': themeColor } as React.CSSProperties}
+                                                value={selVal || ''}
+                                                onChange={(e) => {
+                                                    const newAnswers = [...answers];
+                                                    newAnswers[currentQuestionIndex] = { ...currentAnswer, [left]: e.target.value };
+                                                    setAnswers(newAnswers);
+                                                }}
+                                              >
+                                                  <option value="">- ? -</option>
+                                                  {rightSides.map((right: string, rIdx: number) => (
+                                                      <option key={rIdx} value={right}>Opsi {String.fromCharCode(65 + rIdx)}</option>
+                                                  ))}
+                                              </select>
+                                              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-gray-500">
+                                                  <ChevronDown size={14} />
+                                              </div>
+                                          </div>
+                                      </div>
+                                  </div>
+                              );
+                          })}
                       </div>
-                  ))}
+
+                      {/* Right Column: Options */}
+                      <div className="space-y-4">
+                          <h4 className="font-bold text-gray-400 text-xs uppercase tracking-wider mb-2 flex items-center">
+                              <span className="w-1.5 h-1.5 rounded-full bg-orange-500 mr-2"></span>
+                              Pilihan Jawaban
+                          </h4>
+                          {rightSides.map((right: string, rIdx: number) => {
+                              const isSelected = Object.values(currentAnswer).includes(right);
+                              return (
+                                  <div key={rIdx} className={`p-4 rounded-xl border-2 flex items-start gap-4 transition-all duration-300 ${isSelected ? 'bg-gray-50 border-gray-200 opacity-60' : 'bg-white border-orange-100 shadow-sm hover:border-orange-200'}`}>
+                                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm shrink-0 border-2 ${isSelected ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-orange-100 text-orange-700 border-orange-200'}`}>
+                                          {String.fromCharCode(65 + rIdx)}
+                                      </div>
+                                      <div className="ql-editor !p-0 !min-h-0 prose prose-sm max-w-none text-sm text-gray-800" dangerouslySetInnerHTML={{ __html: right }}></div>
+                                  </div>
+                              );
+                          })}
+                      </div>
+                  </div>
               </div>
           );
       } else if (q.type === 'URAIAN') {
