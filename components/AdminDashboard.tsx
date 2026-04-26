@@ -482,12 +482,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
       try {
           const { students, results: lightweightResults } = await db.getLightweightMonitoringData();
           
+          let validStudentIds = new Set<string>();
+          if (user.role === UserRole.PROKTOR) {
+              const allowedStudents = students.filter((student: any) => {
+                  let match = true;
+                  if (user.school && student.school !== user.school) match = false;
+                  if (user.room && student.room !== user.room && !student.mappings?.some((m: any) => m.room === user.room)) match = false;
+                  return match;
+              });
+              validStudentIds = new Set(allowedStudents.map((s: any) => s.id));
+          } else {
+              validStudentIds = new Set(students.map((s: any) => s.id));
+          }
+          
           setUsers(prevUsers => {
               return prevUsers.map(u => {
                   const updatedStudent = students.find((s: any) => s.id === u.id);
                   const studentResults = lightweightResults.filter((r: any) => r.peserta_id === u.id);
                   
-                  let derivedStatus: string | undefined = undefined;
+                  let derivedStatus: 'idle' | 'working' | 'finished' | 'blocked' | 'login' | undefined = undefined;
                   
                   // Filter by selected exam subject if monitoring Subject Filter is set
                   const relevantResults = monitoringSubjectFilter && monitoringSubjectFilter !== 'ALL' 
@@ -514,7 +527,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                       return { 
                           ...u, 
                           status: derivedStatus || (updatedStudent.is_login ? 'login' : undefined), 
-                          is_login: updatedStudent.is_login, 
+                          isLogin: updatedStudent.is_login, 
                           room: updatedStudent.room || u.room 
                       };
                   }
@@ -532,7 +545,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
           setResults(prevResults => {
               // We need to update existing results or add new ones, but keep answers if they exist in prev
               const newResults = [...prevResults];
-              lightweightResults.forEach((lr: any) => {
+              const relevantLightweightResults = lightweightResults.filter((lr: any) => validStudentIds.has(lr.peserta_id));
+              
+              relevantLightweightResults.forEach((lr: any) => {
                   const existingIndex = newResults.findIndex(r => r.id === lr.id);
                   if (existingIndex >= 0) {
                       newResults[existingIndex] = {
@@ -2540,7 +2555,7 @@ ANS: B`;
       if (u.status === 'blocked') return { color: 'bg-red-600 text-white border-red-700 animate-pulse', label: 'TERKUNCI (MELANGGAR)' };
       if (u.status === 'finished') return { color: 'bg-green-100 text-green-700 border-green-200', label: 'Selesai' };
       if (u.status === 'working') return { color: 'bg-blue-100 text-blue-700 border-blue-200', label: 'Mengerjakan' };
-      if (u.is_login || u.status === 'login') return { color: 'bg-yellow-100 text-yellow-700 border-yellow-200', label: 'Sudah Login' };
+      if (u.isLogin || u.status === 'login') return { color: 'bg-yellow-100 text-yellow-700 border-yellow-200', label: 'Sudah Login' };
       return { color: 'bg-gray-100 text-gray-500 border-gray-200', label: 'Belum Login' };
   };
   
@@ -2563,10 +2578,14 @@ ANS: B`;
 
   const handleBulkReset = async () => {
       if (!selectedStudentIds.length) return;
-      showConfirm(`Reset login status untuk ${selectedStudentIds.length} peserta terpilih?`, async () => {
+      showConfirm(`Reset login dan unfreeze ${selectedStudentIds.length} peserta terpilih?`, async () => {
           setIsLoadingData(true);
           for (const id of selectedStudentIds) {
               await db.resetUserStatus(id);
+              const userResults = results.filter((res: any) => res.studentId === id);
+              for (const res of userResults) {
+                  await db.resetCheatingCount(res.id);
+              }
           }
           setSelectedStudentIds([]);
           await loadData();
@@ -3246,7 +3265,7 @@ ANS: B`;
                         <ArrowRight className="text-gray-300 group-hover:text-gray-600 transition-colors" size={16}/>
                     </div>
                     <div className="space-y-1">
-                        <h3 className="text-3xl font-bold text-gray-800">{users.filter(u => u.status === 'working' || u.status === 'login' || u.is_login).length}</h3>
+                        <h3 className="text-3xl font-bold text-gray-800">{users.filter(u => u.status === 'working' || u.status === 'login' || u.isLogin).length}</h3>
                         <p className="text-sm font-medium text-gray-500">Peserta Online</p>
                         <p className="text-[10px] text-gray-400 mt-2">{users.filter(u => u.status === 'working').length} sedang mengerjakan</p>
                     </div>
@@ -3381,7 +3400,20 @@ ANS: B`;
                         {results.filter(r => r.status === 'finished').length === 0 ? (
                             <div className="text-center text-gray-400 italic p-8">Belum ada aktivitas ujian selesai.</div>
                         ) : (
-                            results.filter(r => r.status === 'finished').sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()).slice(0, 5).map(r => (
+                            results.filter(r => r.status === 'finished').sort((a, b) => {
+                                const tA = a.submittedAt ? new Date(a.submittedAt).getTime() : 0;
+                                const tB = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;
+                                return (isNaN(tB) ? 0 : tB) - (isNaN(tA) ? 0 : tA);
+                            }).slice(0, 5).map(r => {
+                                const t = r.submittedAt ? new Date(r.submittedAt).getTime() : 0;
+                                const timeStr = isNaN(t) || t === 0 ? '-' : new Date(r.submittedAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                                let scoreStr = '0';
+                                if (typeof r.score === 'number' && !isNaN(r.score)) {
+                                    scoreStr = r.score.toString();
+                                } else if (typeof r.score === 'string' && !isNaN(Number(r.score))) {
+                                    scoreStr = Number(r.score).toString();
+                                }
+                                return (
                                 <div key={r.id} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition border border-transparent hover:border-gray-100">
                                     <div className="flex items-center gap-4">
                                         <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs">
@@ -3393,11 +3425,11 @@ ANS: B`;
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <span className="text-sm font-bold text-green-600">{r.score}</span>
-                                        <p className="text-[10px] text-gray-400">{new Date(r.submittedAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</p>
+                                        <span className="text-sm font-bold text-green-600">{scoreStr}</span>
+                                        <p className="text-[10px] text-gray-400">{timeStr}</p>
                                     </div>
                                 </div>
-                            ))
+                            )})
                         )}
                     </div>
                     {results.length > 0 && (
@@ -3679,7 +3711,7 @@ ANS: B`;
                                            <td className="p-3 text-center">
                                                <button 
                                                     title="Buka Freeze (Reset Status)" 
-                                                    onClick={async () => { await db.resetUserStatus(u.id); showToast('Status peserta di-reset (Unfreeze).'); loadData(); }} 
+                                                    onClick={async () => { await db.resetUserStatus(u.id); const userResults = results.filter((res: any) => res.studentId === u.id); for (const res of userResults) { await db.resetCheatingCount(res.id); } showToast('Status peserta di-reset (Unfreeze).'); loadData(); }} 
                                                     className="text-orange-600 bg-orange-50 border border-orange-200 p-1.5 rounded hover:bg-orange-100 transition"
                                                 >
                                                     <Flame size={16} />

@@ -28,7 +28,7 @@ export interface User {
   class?: string;
   password?: string;
   isLogin?: boolean;
-  status?: 'idle' | 'working' | 'finished' | 'blocked';
+  status?: 'idle' | 'working' | 'finished' | 'blocked' | 'login';
   // List of mappings for different exams
   mappings?: StudentMapping[];
   // Virtual fields for UI compatibility

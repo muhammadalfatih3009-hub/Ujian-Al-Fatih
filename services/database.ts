@@ -166,10 +166,12 @@ export const db = {
   resetAllViolations: async (): Promise<void> => {
       await supabase.from('results').update({ violation_count: 0 }).neq('id', '00000000-0000-0000-0000-000000000000');
   },
-  unblockAllUsers: async (): Promise<void> => {},
+  unblockAllUsers: async (): Promise<void> => {
+      await supabase.from('results').update({ status: 'working', violation_count: 0 }).gt('violation_count', 0);
+  },
   getLightweightMonitoringData: async (): Promise<any> => {
-    const { data: students } = await supabase.from('students').select('id, name, school, room, is_login');
-    const { data: results } = await supabase.from('results').select('id, exam_id, peserta_id, status');
+    const { data: students } = await supabase.from('students').select('id, name, school, room, is_login, mappings');
+    const { data: results } = await supabase.from('results').select('id, exam_id, peserta_id, status, score, finish_time, violation_count');
     return { students: students || [], results: results || [] };
   },
   updateUser: async (id: string, user: Partial<User>) => {
@@ -338,6 +340,30 @@ export const db = {
   getExamSessions: async (): Promise<any[]> => [],
   createExamSession: async (s: any) => {},
   updateExamSession: async (id: string, u: any) => {},
-  subscribeToStudentStatus: (studentId: string, cb: any): any => ({ unsubscribe: () => {} }),
+  subscribeToStudentStatus: (studentId: string, cb: any): any => {
+      const channel = supabase.channel(`student_status_${studentId}_${Date.now()}`)
+        .on(
+            'postgres_changes',
+            { event: 'UPDATE', schema: 'public', table: 'students', filter: `id=eq.${studentId}` },
+            (payload: any) => {
+                const newRec = payload.new;
+                if (newRec.is_login === false) {
+                    cb('idle');
+                }
+            }
+        )
+        .on(
+            'postgres_changes',
+            { event: 'UPDATE', schema: 'public', table: 'results', filter: `peserta_id=eq.${studentId}` },
+            (payload: any) => {
+                const newRec = payload.new;
+                if (newRec.status === 'working' || newRec.violation_count === 0) {
+                    cb('working'); 
+                }
+            }
+        )
+        .subscribe();
+      return channel;
+  },
   deleteExamSession: async (id: string) => {}
 };
