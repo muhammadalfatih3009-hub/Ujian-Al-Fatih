@@ -30,6 +30,7 @@ const App: React.FC = () => {
   // PWA Install State
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
+  const [showPwaPrompt, setShowPwaPrompt] = useState(false);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
       setToast({ message, type });
@@ -62,19 +63,58 @@ const App: React.FC = () => {
     const handleBeforeInstallPrompt = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      setIsInstallable(true);
+      // We still capture the prompt for later user
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    
+    // Check if already installed / in standalone mode
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone || document.referrer.includes('android-app://');
+    
+    // Check mobile
+    const isMobile = window.innerWidth <= 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    
+    let hideTimer: any;
+    let showTimer: any;
+
+    if (isMobile && !isStandalone) {
+        setIsInstallable(true);
+        // Show after 1 second
+        showTimer = setTimeout(() => {
+            setShowPwaPrompt(true);
+        }, 1000);
+        
+        // Hide after 11 seconds (10s duration)
+        hideTimer = setTimeout(() => {
+            setShowPwaPrompt(false);
+        }, 11000);
+    }
+
+    return () => {
+        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        if (showTimer) clearTimeout(showTimer);
+        if (hideTimer) clearTimeout(hideTimer);
+    };
   }, []);
 
   const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    setDeferredPrompt(null);
-    setIsInstallable(false);
+    if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+            setShowPwaPrompt(false);
+        }
+        setDeferredPrompt(null);
+    } else {
+        // Fallback for iOS Safari or other browsers without beforeinstallprompt
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+        if (isIOS) {
+            showToast("Untuk install, tap ikon Share (bagikan) di bawah lalu pilih 'Add to Home Screen'.", "success");
+        } else {
+            showToast("Gunakan menu browser (titik tiga) lalu pilih 'Install App' atau 'Add to Home Screen'.", "success");
+        }
+        setShowPwaPrompt(false);
+    }
   };
 
   useEffect(() => {
@@ -373,16 +413,6 @@ const App: React.FC = () => {
                   >
                   {loading ? 'Memuat...' : <><LogIn className="mr-2" size={18}/> Masuk</>}
                   </button>
-
-                  {isInstallable && (
-                      <button
-                          type="button"
-                          onClick={handleInstallClick}
-                          className="w-full mt-3 border font-bold py-3.5 rounded-lg shadow-sm transition transform active:scale-95 flex items-center justify-center text-gray-700 hover:bg-gray-50 border-gray-300"
-                      >
-                          <Download className="mr-2" size={18}/> Instal Aplikasi (PWA)
-                      </button>
-                  )}
               </form>
               </div>
           </div>
@@ -394,6 +424,20 @@ const App: React.FC = () => {
                   </span>
                 )}
           </div>
+
+          {isInstallable && showPwaPrompt && (
+              <button
+                  type="button"
+                  onClick={handleInstallClick}
+                  className="fixed bottom-6 right-6 z-50 rounded-full shadow-2xl hover:shadow-xl transition transform hover:-translate-y-1 active:scale-95 flex items-center justify-center text-white px-5 py-3 font-bold border-2 border-white/20 md:hidden"
+                  style={{ background: `linear-gradient(135deg, #6366f1, #4f46e5)` }}
+              >
+                  <div className="bg-white/20 p-1.5 rounded-full mr-3">
+                      <Download size={18} strokeWidth={2.5} />
+                  </div>
+                  Install Aplikasi
+              </button>
+          )}
 
         </div>
       ) : currentUser.role === UserRole.SUPER_ADMIN ? (
@@ -500,11 +544,20 @@ const App: React.FC = () => {
 
       {/* CUSTOM TOAST */}
       {toast && (
-          <div className="fixed bottom-10 left-1/2 transform -translate-x-1/2 z-[100] animate-in slide-in-from-bottom-10 duration-300">
-              <div className={`px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 border ${
-                  toast.type === 'error' ? 'bg-red-600 border-red-500 text-white' : 'bg-green-600 border-green-500 text-white'
+          <div className="fixed top-10 left-1/2 transform -translate-x-1/2 z-[100] animate-in slide-in-from-top-10 duration-300 px-4 w-full max-w-sm">
+              <div className={`px-6 py-4 rounded-xl shadow-2xl flex items-start gap-3 border backdrop-blur-md ${
+                  toast.type === 'error' ? 'bg-red-600/95 border-red-500/50 text-white' : 'bg-emerald-600/95 border-emerald-500/50 text-white'
               }`}>
-                  <span className="font-bold text-sm">{toast.message}</span>
+                  {toast.type === 'error' ? (
+                      <div className="bg-red-700/50 p-1 rounded-full shrink-0 mt-0.5">
+                          <svg className="w-5 h-5 text-red-100" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                      </div>
+                  ) : (
+                      <div className="bg-emerald-700/50 p-1 rounded-full shrink-0 mt-0.5">
+                          <svg className="w-5 h-5 text-emerald-100" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                      </div>
+                  )}
+                  <span className="font-medium text-[15px] leading-relaxed whitespace-pre-wrap">{toast.message}</span>
               </div>
           </div>
       )}

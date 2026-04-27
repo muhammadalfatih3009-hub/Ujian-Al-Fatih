@@ -483,7 +483,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
           const { students, results: lightweightResults } = await db.getLightweightMonitoringData();
           
           let validStudentIds = new Set<string>();
-          if (user.role === UserRole.PROKTOR) {
+          if (user.role === UserRole.PROKTOR || user.role === UserRole.PENGAWAS) {
               const allowedStudents = students.filter((student: any) => {
                   let match = true;
                   if (user.school && student.school !== user.school) match = false;
@@ -704,7 +704,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
       let filteredUsers = u;
       let filteredResults = r;
 
-      if (user.role === UserRole.PROKTOR) {
+      if (user.role === UserRole.PROKTOR || user.role === UserRole.PENGAWAS) {
           if (user.school) {
               filteredUsers = filteredUsers.filter(student => student.school === user.school);
           }
@@ -1138,8 +1138,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
         ...pengawas,
         school: newRoomSchool,
         room: newRoomName,
-        npsn: npsn,
-        role: UserRole.PROKTOR 
+        npsn: npsn
       });
 
       showToast(`Ruang ${newRoomName} berhasil dipetakan dengan Pengawas ${pengawas.name}!`, 'success');
@@ -2533,8 +2532,8 @@ ANS: B`;
   const getMonitoringUsers = (schoolFilter: string, roomFilter: string = 'ALL', sessionFilter: string = 'ALL', classFilter: string = 'ALL') => {
       let filtered = users;
       
-      // RBAC: Proktor can only see their school and room
-      if (user.role === UserRole.PROKTOR) {
+      // RBAC: Proktor/Pengawas can only see their school and room
+      if (user.role === UserRole.PROKTOR || user.role === UserRole.PENGAWAS) {
           if (user.school) filtered = filtered.filter(u => u.school === user.school);
           if (user.room) {
               filtered = filtered.filter(u => u.room === user.room || u.mappings?.some((m: any) => m.room === user.room));
@@ -3457,12 +3456,12 @@ ANS: B`;
                   {!isSidebarCollapsed && (
                       <div className="hidden md:block overflow-hidden whitespace-nowrap">
                           <h1 className="font-bold text-lg tracking-wide truncate" title={settings.appName}>
-                              {user.role === UserRole.PROKTOR 
-                                  ? `PROKTOR ${user.username.split('-').pop() || '000'}` 
+                              {user.role === UserRole.PROKTOR || user.role === UserRole.PENGAWAS
+                                  ? `${user.role} ${user.username.split('-').pop() || '000'}` 
                                   : (settings.appName.length > 15 ? settings.appName.substring(0,15)+'...' : settings.appName)}
                           </h1>
                           <p className="text-xs text-blue-100 opacity-80 truncate">
-                              {user.role === UserRole.PROKTOR 
+                              {user.role === UserRole.PROKTOR || user.role === UserRole.PENGAWAS
                                   ? (
                                       <span className="flex flex-col">
                                           <span className="font-bold">{user.room || 'Ruang -'}</span>
@@ -3501,7 +3500,7 @@ ANS: B`;
                   <NavItem id="MAPPING" label="Mapping Sekolah" icon={Map} />
               )}
 
-              {(user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN || user.role === UserRole.PROKTOR) && (
+              {(user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN || user.role === UserRole.PROKTOR || user.role === UserRole.PENGAWAS) && (
                   <NavItem id="PESERTA" label="Data Peserta" icon={RotateCcw} />
               )}
 
@@ -3711,14 +3710,14 @@ ANS: B`;
                                            <td className="p-3 text-center">
                                                <button 
                                                     title="Buka Freeze (Reset Status)" 
-                                                    onClick={async () => { await db.resetUserStatus(u.id); const userResults = results.filter((res: any) => res.studentId === u.id); for (const res of userResults) { await db.resetCheatingCount(res.id); } showToast('Status peserta di-reset (Unfreeze).'); loadData(); }} 
+                                                    onClick={async () => { const userResults = results.filter((res: any) => res.studentId === u.id); for (const res of userResults) { await db.resetCheatingCount(res.id); } showToast('Status peserta di-reset (Unfreeze).'); loadData(); }} 
                                                     className="text-orange-600 bg-orange-50 border border-orange-200 p-1.5 rounded hover:bg-orange-100 transition"
                                                 >
                                                     <Flame size={16} />
                                                </button>
                                            </td>
                                            <td className="p-3 text-center">
-                                               {user.role !== UserRole.PROKTOR && (
+                                               {(user.role !== UserRole.PROKTOR && user.role !== UserRole.PENGAWAS) && (
                                                    <button 
                                                        onClick={() => {
                                                            showConfirm('Hapus data hasil ujian peserta ini secara permanen?', async () => { 
@@ -4299,34 +4298,34 @@ ANS: B`;
                    <div className="flex justify-between items-center mb-6">
                        <h3 className="font-bold text-lg">Data Peserta</h3>
                        <div className="flex gap-2">
-                           {(user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN || user.role === UserRole.PROKTOR) && (
+                           {(user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN || user.role === UserRole.PROKTOR || user.role === UserRole.PENGAWAS) && (
                                 <button 
-                                   disabled={user.role === UserRole.PROKTOR}
+                                   disabled={user.role === UserRole.PROKTOR || user.role === UserRole.PENGAWAS}
                                    onClick={() => { setEditingStudent(null); setNewStudent({ role: UserRole.STUDENT, status: 'idle' }); setIsAddStudentModalOpen(true); }} 
-                                   className={`bg-purple-600 text-white px-3 py-2 rounded text-sm font-bold flex items-center shadow-sm ${user.role === UserRole.PROKTOR ? 'opacity-50 cursor-not-allowed' : 'hover:bg-purple-700'}`}
+                                   className={`bg-purple-600 text-white px-3 py-2 rounded text-sm font-bold flex items-center shadow-sm ${user.role === UserRole.PROKTOR || user.role === UserRole.PENGAWAS ? 'opacity-50 cursor-not-allowed' : 'hover:bg-purple-700'}`}
                                 >
                                    <Plus size={16} className="mr-2"/> Tambah Peserta
                                 </button>
                             )}
-                           {(user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN || user.role === UserRole.PROKTOR) && (
+                           {(user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN || user.role === UserRole.PROKTOR || user.role === UserRole.PENGAWAS) && (
                                 <button 
-                                   disabled={user.role === UserRole.PROKTOR}
+                                   disabled={user.role === UserRole.PROKTOR || user.role === UserRole.PENGAWAS}
                                    onClick={downloadStudentTemplate} 
-                                   className={`bg-green-600 text-white px-3 py-2 rounded text-sm font-bold flex items-center ${user.role === UserRole.PROKTOR ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-700'}`}
+                                   className={`bg-green-600 text-white px-3 py-2 rounded text-sm font-bold flex items-center ${user.role === UserRole.PROKTOR || user.role === UserRole.PENGAWAS ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-700'}`}
                                 >
                                    <FileText size={16} className="mr-2"/> Template CSV
                                 </button>
                             )}
-                           {(user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN || user.role === UserRole.PROKTOR) && (
+                           {(user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN || user.role === UserRole.PROKTOR || user.role === UserRole.PENGAWAS) && (
                                 <button 
-                                   disabled={user.role === UserRole.PROKTOR}
+                                   disabled={user.role === UserRole.PROKTOR || user.role === UserRole.PENGAWAS}
                                    onClick={triggerImportStudents} 
-                                   className={`bg-blue-600 text-white px-3 py-2 rounded text-sm font-bold flex items-center shadow-sm ${user.role === UserRole.PROKTOR ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
+                                   className={`bg-blue-600 text-white px-3 py-2 rounded text-sm font-bold flex items-center shadow-sm ${user.role === UserRole.PROKTOR || user.role === UserRole.PENGAWAS ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
                                 >
                                    <Upload size={16} className="mr-2"/> Import Data
                                 </button>
                             )}
-                            {(user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN || user.role === UserRole.PROKTOR) && (
+                            {(user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN || user.role === UserRole.PROKTOR || user.role === UserRole.PENGAWAS) && (
                                 <button 
                                    onClick={handlePrintCards} 
                                    className="bg-orange-600 text-white px-3 py-2 rounded text-sm font-bold flex items-center shadow-sm hover:bg-orange-700"
@@ -4377,12 +4376,12 @@ ANS: B`;
                                    <tr key={u.id} className="hover:bg-gray-50">
                                        <td className="p-3">{u.name}</td><td className="p-3 font-mono">{u.nomorPeserta}</td><td className="p-3">{u.school}</td><td className="p-3 text-xs text-gray-500">{u.npsn || '-'}</td><td className="p-3">{u.class || '-'}</td><td className="p-3">{u.room || '-'}</td>
                                        <td className="p-3 text-center flex justify-center gap-2">
-                                            {user.role !== UserRole.PROKTOR && (
+                                            {(user.role !== UserRole.PROKTOR && user.role !== UserRole.PENGAWAS) && (
                                                 <button title="Edit Data Peserta" onClick={() => handleEditStudent(u)} className="text-blue-600 bg-blue-50 border border-blue-200 p-1.5 rounded hover:bg-blue-100 transition"><Edit size={14}/></button>
                                             )}
                                            <button title="Reset Login (Unlock)" onClick={async () => { await db.resetUserStatus(u.id); showToast('Status login peserta di-reset (Unlock).'); loadData(); }} className="text-yellow-600 bg-yellow-50 border border-yellow-200 p-1.5 rounded hover:bg-yellow-100 transition"><Unlock size={14}/></button>
                                            <button title="Reset Password (12345)" onClick={async () => { showConfirm('Reset password jadi 12345?', async () => { await db.resetUserPassword(u.id); showToast('Password di-reset menjadi 12345'); }) }} className="text-blue-600 bg-blue-50 border border-blue-200 p-1.5 rounded hover:bg-blue-100 transition"><Key size={14}/></button>
-                                            {user.role !== UserRole.PROKTOR && (
+                                            {(user.role !== UserRole.PROKTOR && user.role !== UserRole.PENGAWAS) && (
                                                 <button title="Hapus Peserta" onClick={() => {showConfirm('Hapus peserta?', async () => { await db.deleteUser(u.id); loadData(); })}} className="text-red-600 bg-red-50 border border-red-200 p-1.5 rounded hover:bg-red-100 transition"><Trash2 size={14}/></button>
                                             )}
                                        </td>

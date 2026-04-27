@@ -310,20 +310,6 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
       localStorage.setItem(answersKey, JSON.stringify(answers));
   }, [answers, answersKey]);
 
-  // Periodic Auto-Save every 3 Minutes
-  useEffect(() => {
-      if (!isSessionInitialized) return;
-      
-      const autoSaveInterval = setInterval(() => {
-          console.log('Auto-saving progress...');
-          // DB Auto-save disabled as requested, rely on localStorage
-          // db.saveExamProgress(user.id, exam.id, answers, cheatingAttempts, currentQuestionIndex)
-          //   .catch(err => console.warn("Failed to auto-save progress to DB", err));
-      }, 3 * 60 * 1000); // 3 minutes
-
-      return () => clearInterval(autoSaveInterval);
-  }, [isSessionInitialized, user.id, exam.id, answers, cheatingAttempts, currentQuestionIndex]);
-
   useEffect(() => {
       localStorage.setItem(doubtsKey, JSON.stringify(markedDoubts));
   }, [markedDoubts, doubtsKey]);
@@ -431,6 +417,8 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
               if (isFrozen) {
                   setIsFrozen(false);
                   setFreezeTimeLeft(0);
+                  setCheatingAttempts(0);
+                  localStorage.setItem(cheatKey, '0');
               }
           } else if (status === 'finished') {
               // Admin forced finish
@@ -1424,20 +1412,17 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
                    <button 
                     onClick={() => {
                         if (!canGoNext) return;
-                        const antiSubmitSeconds = (settings.antiCheat.antiSubmitTime || 0) * 60;
-                        if (settings.antiCheat.antiSubmitEnabled && timeLeft > antiSubmitSeconds) {
-                            return;
-                        }
+                        if (isAntiSubmitBlocking) return;
                         setShowConfirmFinishModal(true);
                     }}
-                    disabled={(settings.antiCheat.antiSubmitEnabled && timeLeft > (settings.antiCheat.antiSubmitTime || 0) * 60) || !canGoNext}
+                    disabled={isAntiSubmitBlocking || !canGoNext}
                     className="flex items-center justify-center px-2 md:px-4 py-2 text-white rounded font-medium hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed flex-1 md:flex-none text-xs md:text-base"
-                    style={{ backgroundColor: themeColor }}
+                    style={{ backgroundColor: isAntiSubmitBlocking || !canGoNext ? '#9ca3af' : themeColor }}
                    >
-                     {settings.antiCheat.antiSubmitEnabled && timeLeft > (settings.antiCheat.antiSubmitTime || 0) * 60 ? (
+                     {isAntiSubmitBlocking ? (
                          <span className="flex items-center">
                              <Clock size={14} className="mr-1 md:mr-2 animate-pulse" />
-                             <span className="hidden md:inline">Tunggu</span> {formatTime(timeLeft - (settings.antiCheat.antiSubmitTime || 0) * 60)}
+                             <span className="hidden md:inline">Tunggu</span> {formatTime(antiSubmitSecondsRemaining)}
                          </span>
                      ) : (
                          <>Selesai <ChevronRight size={16} className="ml-1"/></>
