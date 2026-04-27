@@ -316,8 +316,9 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
       
       const autoSaveInterval = setInterval(() => {
           console.log('Auto-saving progress...');
-          db.saveExamProgress(user.id, exam.id, answers, cheatingAttempts, currentQuestionIndex)
-            .catch(err => console.warn("Failed to auto-save progress to DB", err));
+          // DB Auto-save disabled as requested, rely on localStorage
+          // db.saveExamProgress(user.id, exam.id, answers, cheatingAttempts, currentQuestionIndex)
+          //   .catch(err => console.warn("Failed to auto-save progress to DB", err));
       }, 3 * 60 * 1000); // 3 minutes
 
       return () => clearInterval(autoSaveInterval);

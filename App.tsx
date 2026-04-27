@@ -7,7 +7,7 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { SuperAdminDashboard } from './components/SuperAdminDashboard';
 import { StudentFlow } from './components/StudentFlow';
 import { BackgroundShapes } from './components/BackgroundShapes';
-import { LogIn, Lock, Eye, EyeOff, Calendar, X, AlertTriangle } from 'lucide-react';
+import { LogIn, Lock, Eye, EyeOff, Calendar, X, AlertTriangle, Download } from 'lucide-react';
 import 'katex/dist/katex.min.css';
 
 const UserCircleIcon = ({className, size}: {className?: string, size?: number}) => (
@@ -26,6 +26,10 @@ const App: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+
+  // PWA Install State
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstallable, setIsInstallable] = useState(false);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
       setToast({ message, type });
@@ -53,6 +57,25 @@ const App: React.FC = () => {
     loadSettings();
     restoreSession();
   }, []);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    setDeferredPrompt(null);
+    setIsInstallable(false);
+  };
 
   useEffect(() => {
     const logo = settings.schoolLogoUrl;
@@ -350,6 +373,16 @@ const App: React.FC = () => {
                   >
                   {loading ? 'Memuat...' : <><LogIn className="mr-2" size={18}/> Masuk</>}
                   </button>
+
+                  {isInstallable && (
+                      <button
+                          type="button"
+                          onClick={handleInstallClick}
+                          className="w-full mt-3 border font-bold py-3.5 rounded-lg shadow-sm transition transform active:scale-95 flex items-center justify-center text-gray-700 hover:bg-gray-50 border-gray-300"
+                      >
+                          <Download className="mr-2" size={18}/> Instal Aplikasi (PWA)
+                      </button>
+                  )}
               </form>
               </div>
           </div>
