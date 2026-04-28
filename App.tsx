@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, UserRole, Exam, AppSettings } from './types';
 import { db } from './services/database'; // SWITCHED TO REAL DB
+import { formatImageUrl } from './utils/image';
 import { cacheManager } from './utils/cache'; 
 import { ExamInterface } from './components/ExamInterface';
 import { AdminDashboard } from './components/AdminDashboard';
@@ -118,7 +119,7 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    const logo = settings.schoolLogoUrl;
+    const logo = formatImageUrl(settings.schoolLogoUrl);
     if (logo) {
       const faviconLinks = document.querySelectorAll("link[rel*='icon']");
       faviconLinks.forEach(link => {
@@ -358,7 +359,7 @@ const App: React.FC = () => {
               {settings.schoolLogoUrl && (
                   <div className="flex justify-center mb-6">
                       <img 
-                          src={settings.schoolLogoUrl} 
+                          src={formatImageUrl(settings.schoolLogoUrl)} 
                           className="w-40 h-auto object-contain animate-float-slow filter drop-shadow-xl" 
                           alt="School Logo" 
                           referrerPolicy="no-referrer"

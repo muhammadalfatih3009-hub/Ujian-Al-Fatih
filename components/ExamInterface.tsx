@@ -6,6 +6,7 @@ import 'katex/dist/katex.min.css';
 import { Exam, ExamResult, User, Question, AppSettings } from '../types';
 import { playAlertSound } from '../utils/sound';
 import { Timer, ChevronRight, ChevronLeft, ChevronDown, Grid3X3, CheckCircle, ShieldAlert, ZoomIn, X, Maximize2, Clock, RefreshCcw } from 'lucide-react';
+import { formatImageUrl } from '../utils/image';
 import { db } from '../services/database'; // SWITCHED TO REAL DB
 import { Confetti } from './Confetti';
 import { motion, AnimatePresence } from 'motion/react';
@@ -1350,11 +1351,11 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
                          <div 
                              className="cursor-zoom-in"
                              onMouseMove={handleImageMouseMove}
-                             onClick={() => setPreviewImage(currentQ.imgUrl || null)}
+                             onClick={() => setPreviewImage(formatImageUrl(currentQ.imgUrl) || null)}
                              style={{ '--zoom-x': '50%', '--zoom-y': '50%' } as React.CSSProperties}
                          >
                              <img 
-                                src={currentQ.imgUrl} 
+                                src={formatImageUrl(currentQ.imgUrl)} 
                                 alt="Soal" 
                                 className="w-full h-auto object-contain transition-transform duration-200 ease-out group-hover:scale-[2.5]"
                                 style={{ transformOrigin: 'var(--zoom-x) var(--zoom-y)' }}

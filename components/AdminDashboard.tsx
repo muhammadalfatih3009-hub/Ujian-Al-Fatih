@@ -14,6 +14,7 @@ import {
 } from 'recharts';
 import { User, Exam, UserRole, Question, QuestionType, ExamResult, AppSettings } from '../types';
 import { db } from '../services/database'; 
+import { formatImageUrl } from '../utils/image'; 
 import { generateQuestionsWithGemini } from '../services/geminiService';
 import { Plus, BookOpen, Save, LogOut, Loader2, Key, RotateCcw, Clock, Upload, Download, FileText, LayoutDashboard, Settings, Printer, Filter, Calendar, FileSpreadsheet, Lock, Link, Edit, ShieldAlert, Activity, ClipboardList, Search, Unlock, Trash2, Database, School, Shuffle, X, CheckSquare, Map, CalendarDays, Flame, Volume2, AlertTriangle, UserX, Info, Check, Monitor, Users, GraduationCap, CheckCircle, XCircle, ArrowLeft, BarChart3, PieChart, Menu, Trash, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, History, Sparkles, Bot, Eye, Wrench, Power, ArrowRight, CheckCircle2, TriangleAlert, ShieldCheck, Palette, Image as ImageIcon, ArrowRightLeft, Copy, UserPlus } from 'lucide-react';
 import ReactQuill, { Quill } from 'react-quill-new';
@@ -166,8 +167,7 @@ const escapeCSV = (field: any): string => {
 };
 
 const processImageUrl = (url: string): string => {
-    const trimmed = url.trim();
-    return trimmed;
+    return formatImageUrl(url);
 };
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, appName, onSettingsChange, themeColor, settings }) => {
@@ -1914,7 +1914,7 @@ ANS: B`;
                   nomor: no || String(idx + 1),
                   type: qType,
                   text: text || 'Soal',
-                  imgUrl: img ? processImageUrl(String(img)) : undefined,
+                  imgUrl: img ? formatImageUrl(String(img)) : undefined,
                   options: options,
                   correctIndex: cIndex,
                   correctIndices: cIndices,
@@ -2054,7 +2054,7 @@ ANS: B`;
               // Detect Link: Link: https://...
               const lMatch = line.match(/^link:\s*(.*)/i);
               if (lMatch) {
-                  currentQ.imgUrl = processImageUrl(lMatch[1]);
+                  currentQ.imgUrl = formatImageUrl(lMatch[1]);
                   continue;
               }
 
@@ -2274,7 +2274,7 @@ ANS: B`;
           `;
 
           if (q.imgUrl) {
-              content += `<img src="${q.imgUrl}" class="q-image" />`;
+              content += `<img src="${formatImageUrl(q.imgUrl)}" class="q-image" />`;
           }
 
           content += `<div class="options">`;
@@ -4685,7 +4685,7 @@ ANS: B`;
                                                            <ReactQuill theme="snow" value={q.text} readOnly={true} modules={{ toolbar: false }} className="read-only-quill-preview" />
                                                        </div>
                                                        
-                                                       {q.imgUrl && <img src={q.imgUrl} alt="Question" className="max-w-md rounded-xl mb-4 border shadow-sm" />}
+                                                       {q.imgUrl && <img src={formatImageUrl(q.imgUrl)} alt="Question" className="max-w-md rounded-xl mb-4 border shadow-sm" />}
                                                        
                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                                            {(q.type === 'PG' || q.type === 'PG_KOMPLEKS' || q.type === 'TRUE_FALSE') && (
@@ -5585,7 +5585,7 @@ ANS: B`;
                                   ${logoStyle === 'circle' ? 'w-32 h-32 rounded-full' : 
                                     logoStyle === 'rect_4_3' ? 'w-40 h-32 rounded-lg' : 'w-32 h-40 rounded-lg'}`}>
                                   {logoUrl ? (
-                                      <img src={logoUrl} alt="Preview" className="w-full h-full object-contain bg-white" referrerPolicy="no-referrer" />
+                                      <img src={formatImageUrl(logoUrl)} alt="Preview" className="w-full h-full object-contain bg-white" referrerPolicy="no-referrer" />
                                   ) : (
                                       <ImageIcon className="text-gray-400 w-10 h-10" />
                                   )}
@@ -6458,7 +6458,7 @@ ANS: B`;
                           </h4>
                           <div className="bg-white p-4 rounded-xl border shadow-sm mb-8">
                               {nqImg && (
-                                  <img src={processImageUrl(nqImg)} alt="Preview" className="max-w-full h-auto rounded-lg mb-4 mx-auto border" />
+                                  <img src={formatImageUrl(nqImg)} alt="Preview" className="max-w-full h-auto rounded-lg mb-4 mx-auto border" />
                               )}
                               <div className="text-sm ql-editor !p-0 mb-4 prose prose-sm max-w-none overflow-x-auto" dangerouslySetInnerHTML={{ __html: nqText || '<p className="text-gray-300 italic">Teks soal akan muncul di sini...</p>' }}></div>
                               
@@ -6543,7 +6543,7 @@ ANS: B`;
                       <div className="grid grid-cols-1 md:grid-cols-[60%_40%] gap-12">
                           <div className="min-w-0">
                               {previewQuestion.imgUrl && (
-                                  <img src={previewQuestion.imgUrl} alt="Preview" className="max-w-full h-auto rounded-lg mb-6 mx-auto" />
+                                  <img src={formatImageUrl(previewQuestion.imgUrl)} alt="Preview" className="max-w-full h-auto rounded-lg mb-6 mx-auto" />
                               )}
                               <div className="overflow-hidden bg-white">
                                   <ReactQuill 
@@ -6715,7 +6715,7 @@ ANS: B`;
                                             <span class="q-badge q-type">${q.type}</span>
                                             <span class="q-badge q-points">Bobot: ${q.points}</span>
                                         </div>
-                                        ${q.imgUrl ? `<img src="${q.imgUrl}" class="q-image">` : ''}
+                                        ${q.imgUrl ? `<img src="${formatImageUrl(q.imgUrl)}" class="q-image">` : ''}
                                         <div class="q-text ql-snow"><div class="ql-editor">${q.text}</div></div>
                                         <div class="options-grid">
                                 `;
@@ -6819,7 +6819,7 @@ ANS: B`;
                                   </div>
                                   
                                   {q.imgUrl && (
-                                      <img src={q.imgUrl} alt={`Soal ${i+1}`} className="max-w-full h-auto rounded-xl mb-6 shadow-sm border border-gray-100 print:shadow-none" />
+                                      <img src={formatImageUrl(q.imgUrl)} alt={`Soal ${i+1}`} className="max-w-full h-auto rounded-xl mb-6 shadow-sm border border-gray-100 print:shadow-none" />
                                   )}
                                   
                                   <div className="mb-8 overflow-hidden bg-white">
