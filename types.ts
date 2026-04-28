@@ -70,6 +70,7 @@ export interface Exam {
   durationMinutes: number; // Mapped from "duration"
   questionCount: number;   // Mapped from "question_count"
   token: string;
+  exitToken?: string; // Token needed to submit the exam
   isActive: boolean; // Virtual (always true based on schema)
   questions: Question[]; // Populated via relation
   
@@ -124,4 +125,5 @@ export interface AppSettings {
   showTokenToStudents?: boolean;
   showScoreToStudents?: boolean;
   sessionTimes?: Record<string, string>;
+  examExitTokens?: Record<string, string>;
 }

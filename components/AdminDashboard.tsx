@@ -1484,6 +1484,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
       }
   };
 
+  const handleUpdateExitToken = async (newToken: string) => {
+      if (!viewingQuestionsExam) return;
+      try {
+          const newTokens = { ...settings.examExitTokens, [viewingQuestionsExam.id]: newToken.toUpperCase() };
+          await db.updateSettings({ examExitTokens: newTokens });
+          onSettingsChange({ ...settings, examExitTokens: newTokens });
+          showToast('Token keluar berhasil diupdate', 'success');
+      } catch (error: any) {
+          showToast(error.message || 'Gagal mengupdate token keluar', 'error');
+      }
+  };
+
   const handleUpdateQuestionPoints = async (questionId: string, newPoints: number) => {
       if (!viewingQuestionsExam) return;
       try {
@@ -2771,23 +2783,31 @@ ANS: B`;
       if (mappingClassFilter !== 'ALL') filtered = filtered.filter(u => u.class === mappingClassFilter);
 
       // Filter by room/session from mappings
-      if (mappingRoomFilter !== 'ALL' || mappingSessionFilter !== 'ALL' || mappingEditForm.examId) {
+      if (mappingRoomFilter !== 'ALL' || mappingSessionFilter !== 'ALL') {
           filtered = filtered.filter(u => {
-              const m = u.mappings?.find(map => !mappingEditForm.examId || map.examId === mappingEditForm.examId);
-
-              // Handle Room Filter
-              if (mappingRoomFilter === 'NONE') {
-                  if (m && m.room) return false;
-              } else if (mappingRoomFilter !== 'ALL') {
-                  if (!m || m.room !== mappingRoomFilter) return false;
+              let relevantMappings = u.mappings || [];
+              if (mappingEditForm.examId) {
+                  relevantMappings = relevantMappings.filter(map => map.examId === mappingEditForm.examId);
               }
 
-              // Handle Session Filter
-              if (mappingSessionFilter !== 'ALL') {
-                  if (!m || m.session !== mappingSessionFilter) return false;
+              if (relevantMappings.length === 0) {
+                  const passRoom = mappingRoomFilter === 'ALL' || mappingRoomFilter === 'NONE';
+                  const passSession = mappingSessionFilter === 'ALL';
+                  return passRoom && passSession;
               }
 
-              return true;
+              return relevantMappings.some(m => {
+                  let passRoom = false;
+                  if (mappingRoomFilter === 'ALL') passRoom = true;
+                  else if (mappingRoomFilter === 'NONE') passRoom = !m.room;
+                  else passRoom = m.room === mappingRoomFilter;
+
+                  let passSession = false;
+                  if (mappingSessionFilter === 'ALL') passSession = true;
+                  else passSession = m.session === mappingSessionFilter;
+
+                  return passRoom && passSession;
+              });
           });
       }
 
@@ -3772,6 +3792,16 @@ ANS: B`;
                                           className="border rounded p-1 w-16 text-xs text-center"
                                           value={viewingQuestionsExam.durationMinutes}
                                           onChange={(e) => handleUpdateDuration(Number(e.target.value))}
+                                      />
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                      <label className="text-xs font-bold text-gray-600">Token Keluar:</label>
+                                      <input 
+                                          type="text" 
+                                          className="border rounded p-1 w-20 text-xs text-center uppercase"
+                                          placeholder="Opsional"
+                                          value={settings.examExitTokens?.[viewingQuestionsExam.id] || ''}
+                                          onChange={(e) => handleUpdateExitToken(e.target.value)}
                                       />
                                   </div>
                                   <label className="flex items-center gap-2 text-xs font-bold text-gray-600 cursor-pointer hover:text-blue-600 transition">

@@ -222,6 +222,8 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
   const [showConfirmFinishModal, setShowConfirmFinishModal] = useState(false);
   const [showResultStats, setShowResultStats] = useState(false);
   const [lastScore, setLastScore] = useState(0);
+  const [enteredExitToken, setEnteredExitToken] = useState("");
+  const [exitTokenError, setExitTokenError] = useState("");
   
   // Time Warning State
   const [timeAlert, setTimeAlert] = useState<{ visible: boolean; title: string; subtitle: string } | null>(null);
@@ -1495,6 +1497,23 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
                           </div>
                       )}
 
+                      {settings.examExitTokens?.[exam.id] && unansweredCount === 0 && doubtCount === 0 && !isAntiSubmitBlocking && (
+                          <div className="mb-6 text-left">
+                              <label className="block text-sm font-bold text-gray-700 mb-2">Token Keluar</label>
+                              <input 
+                                  type="text" 
+                                  className="w-full border-2 border-gray-300 rounded-xl p-3 text-center uppercase font-bold tracking-widest text-lg focus:border-blue-500 focus:ring-0 transition"
+                                  placeholder="Masukkan Token Keluar"
+                                  value={enteredExitToken}
+                                  onChange={(e) => {
+                                      setEnteredExitToken(e.target.value);
+                                      setExitTokenError("");
+                                  }}
+                              />
+                              {exitTokenError && <p className="text-red-500 font-bold text-xs mt-2">{exitTokenError}</p>}
+                          </div>
+                      )}
+
                       <div className="flex gap-3">
                           <button 
                             onClick={() => setShowConfirmFinishModal(false)}
@@ -1503,7 +1522,14 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
                               Kembali
                           </button>
                           <button 
-                            onClick={handleFinalSubmit}
+                            onClick={() => {
+                                const expectedExitToken = settings.examExitTokens?.[exam.id] || "";
+                                if (expectedExitToken && enteredExitToken.toUpperCase() !== expectedExitToken.toUpperCase()) {
+                                    setExitTokenError("Token keluar tidak sesuai");
+                                    return;
+                                }
+                                handleFinalSubmit();
+                            }}
                             disabled={unansweredCount > 0 || doubtCount > 0 || isSubmitting || isAntiSubmitBlocking}
                             className="flex-1 py-3 rounded-xl font-bold text-white shadow-lg transition transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                             style={{ backgroundColor: themeColor }}
