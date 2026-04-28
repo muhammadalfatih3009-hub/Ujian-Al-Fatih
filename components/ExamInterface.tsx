@@ -762,7 +762,7 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
                           className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all transform active:scale-95 flex items-center justify-center"
                           style={{ backgroundColor: themeColor }}
                       >
-                          Kembali ke Dashboard
+                          Kembali ke Halaman Login
                       </button>
                       
                       <p className="text-center text-[10px] text-gray-400 mt-6 uppercase tracking-widest font-bold">

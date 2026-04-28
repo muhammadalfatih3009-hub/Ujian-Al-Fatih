@@ -315,9 +315,7 @@ const App: React.FC = () => {
   };
 
   const handleExamComplete = () => {
-      // Clear Active Exam state but keep User logged in
-      sessionStorage.removeItem('das_exam');
-      setActiveExam(null);
+      handleLogout();
   };
 
   const loginBgStyle = {
