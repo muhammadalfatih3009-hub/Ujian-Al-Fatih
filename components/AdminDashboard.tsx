@@ -1489,7 +1489,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
       try {
           const newTokens = { ...settings.examExitTokens, [viewingQuestionsExam.id]: newToken.toUpperCase() };
           await db.updateSettings({ examExitTokens: newTokens });
-          onSettingsChange({ ...settings, examExitTokens: newTokens });
+          onSettingsChange();
           showToast('Token keluar berhasil diupdate', 'success');
       } catch (error: any) {
           showToast(error.message || 'Gagal mengupdate token keluar', 'error');
