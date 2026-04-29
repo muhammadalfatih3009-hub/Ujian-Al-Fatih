@@ -278,20 +278,26 @@ const App: React.FC = () => {
     // Clear Session Storage
     sessionStorage.removeItem('das_user');
     sessionStorage.removeItem('das_exam');
-    sessionStorage.removeItem('das_student_flow_step'); // Clear flow state too
+    sessionStorage.removeItem('das_student_flow_step');
     sessionStorage.removeItem('das_student_flow_exam');
 
     cacheManager.clearSession();
-    setCurrentUser(null);
+    
+    // Reset all states
     setActiveExam(null);
+    setCurrentUser(null);
     setLoginInput('');
     setPasswordInput('');
-    loadSettings(); 
+    
+    // Optional: Re-fetch settings for the fresh login screen
+    loadSettings().catch(() => {});
 
     // Exit Fullscreen
-    if (document.fullscreenElement) {
-        document.exitFullscreen().catch(err => console.log(err));
-    }
+    try {
+        if (document.fullscreenElement) {
+            document.exitFullscreen().catch(() => {});
+        }
+    } catch (e) {}
   };
 
   const handleStartExam = async (exam: Exam) => {
@@ -315,7 +321,10 @@ const App: React.FC = () => {
   };
 
   const handleExamComplete = () => {
-      handleLogout();
+      // Use a brief timeout to allow ExamInterface to unmount gracefully
+      setTimeout(() => {
+          handleLogout();
+      }, 100);
   };
 
   const loginBgStyle = {
@@ -441,7 +450,7 @@ const App: React.FC = () => {
         </div>
       ) : currentUser.role === UserRole.SUPER_ADMIN ? (
         <SuperAdminDashboard user={currentUser} onLogout={handleLogout} settings={settings} onSettingsChange={refreshSettings} />
-      ) : (currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.PROKTOR) ? (
+      ) : (currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.PROKTOR || currentUser.role === UserRole.PENGAWAS) ? (
         <AdminDashboard 
           user={currentUser} 
           onLogout={handleLogout} 
