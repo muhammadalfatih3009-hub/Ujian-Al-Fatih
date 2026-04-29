@@ -275,29 +275,28 @@ const App: React.FC = () => {
   };
 
   const handleLogout = () => {
-    // Clear Session Storage
-    sessionStorage.removeItem('das_user');
-    sessionStorage.removeItem('das_exam');
-    sessionStorage.removeItem('das_student_flow_step');
-    sessionStorage.removeItem('das_student_flow_exam');
-
+    // Clear all storage to ensure a clean state
+    sessionStorage.clear();
+    localStorage.clear(); // CAUTION: This clears ALL, including sound pre-cache if any, but good for resetting student state
+    
     cacheManager.clearSession();
     
-    // Reset all states
+    // Reset all states in correct order
     setActiveExam(null);
     setCurrentUser(null);
     setLoginInput('');
     setPasswordInput('');
+    setLoading(false);
     
-    // Optional: Re-fetch settings for the fresh login screen
-    loadSettings().catch(() => {});
-
     // Exit Fullscreen
     try {
         if (document.fullscreenElement) {
             document.exitFullscreen().catch(() => {});
         }
     } catch (e) {}
+
+    // Force a full reload to the specified login page for maximum reliability
+    window.location.href = 'https://spendusjaya.netlify.app/'; 
   };
 
   const handleStartExam = async (exam: Exam) => {
@@ -321,10 +320,7 @@ const App: React.FC = () => {
   };
 
   const handleExamComplete = () => {
-      // Use a brief timeout to allow ExamInterface to unmount gracefully
-      setTimeout(() => {
-          handleLogout();
-      }, 100);
+    handleLogout();
   };
 
   const loginBgStyle = {

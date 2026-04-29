@@ -701,7 +701,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
       
       setExams(e);
       
-      let filteredUsers = u;
+      let filteredUsers = u.filter(user => user.role === UserRole.STUDENT);
       let filteredResults = r;
 
       if (user.role === UserRole.PROKTOR || user.role === UserRole.PENGAWAS) {
