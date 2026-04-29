@@ -2793,32 +2793,45 @@ ANS: B`;
       if (mappingSchoolFilter !== 'ALL') filtered = filtered.filter(u => u.school === mappingSchoolFilter);
       if (mappingClassFilter !== 'ALL') filtered = filtered.filter(u => u.class === mappingClassFilter);
 
-      // Filter by room/session from mappings
+      // Filter by room/session from mappings OR top level
       if (mappingRoomFilter !== 'ALL' || mappingSessionFilter !== 'ALL') {
           filtered = filtered.filter(u => {
+              // Check top level first
+              let passRoomTop = false;
+              if (mappingRoomFilter === 'ALL') passRoomTop = true;
+              else if (mappingRoomFilter === 'NONE') passRoomTop = !u.room;
+              else passRoomTop = u.room === mappingRoomFilter;
+
+              let passSessionTop = false;
+              if (mappingSessionFilter === 'ALL') passSessionTop = true;
+              else passSessionTop = u.session === mappingSessionFilter;
+
+              const topLevelMatch = passRoomTop && passSessionTop;
+
+              // Check mappings
               let relevantMappings = u.mappings || [];
               if (mappingEditForm.examId) {
                   relevantMappings = relevantMappings.filter(map => map.examId === mappingEditForm.examId);
               }
 
-              if (relevantMappings.length === 0) {
-                  const passRoom = mappingRoomFilter === 'ALL' || mappingRoomFilter === 'NONE';
-                  const passSession = mappingSessionFilter === 'ALL';
-                  return passRoom && passSession;
-              }
+              const mappingMatch = relevantMappings.some(m => {
+                  let passRoomVal = false;
+                  if (mappingRoomFilter === 'ALL') passRoomVal = true;
+                  else if (mappingRoomFilter === 'NONE') passRoomVal = !m.room;
+                  else passRoomVal = m.room === mappingRoomFilter;
 
-              return relevantMappings.some(m => {
-                  let passRoom = false;
-                  if (mappingRoomFilter === 'ALL') passRoom = true;
-                  else if (mappingRoomFilter === 'NONE') passRoom = !m.room;
-                  else passRoom = m.room === mappingRoomFilter;
+                  let passSessionVal = false;
+                  if (mappingSessionFilter === 'ALL') passSessionVal = true;
+                  else passSessionVal = m.session === mappingSessionFilter;
 
-                  let passSession = false;
-                  if (mappingSessionFilter === 'ALL') passSession = true;
-                  else passSession = m.session === mappingSessionFilter;
-
-                  return passRoom && passSession;
+                  return passRoomVal && passSessionVal;
               });
+
+              // If no relevant mappings, we rely on top level match
+              if (relevantMappings.length === 0) return topLevelMatch;
+              
+              // If we have mappings, a match in mapping is preferred, but top level match also counts for visibility
+              return mappingMatch || topLevelMatch;
           });
       }
 
@@ -2831,8 +2844,8 @@ ANS: B`;
               const mA = a.mappings?.find(m => !mappingEditForm.examId || m.examId === mappingEditForm.examId);
               const mB = b.mappings?.find(m => !mappingEditForm.examId || m.examId === mappingEditForm.examId);
               
-              if (mappingSort.column === 'room') { valA = mA?.room || ''; valB = mB?.room || ''; }
-              else if (mappingSort.column === 'session') { valA = mA?.session || ''; valB = mB?.session || ''; }
+              if (mappingSort.column === 'room') { valA = mA?.room || a.room || ''; valB = mB?.room || b.room || ''; }
+              else if (mappingSort.column === 'session') { valA = mA?.session || a.session || ''; valB = mB?.session || b.session || ''; }
               else if (mappingSort.column === 'examId') { valA = mA?.examId || ''; valB = mB?.examId || ''; }
           } else {
               valA = String(a[mappingSort.column] || '').toLowerCase();
@@ -2863,6 +2876,19 @@ ANS: B`;
           setResultSort({ column: col, direction: 'asc' });
       }
   };
+
+  // Sync filters to edit form for easier bulk mapping
+  useEffect(() => {
+      if (mappingRoomFilter !== 'ALL' && mappingRoomFilter !== 'NONE') {
+          setMappingEditForm(prev => ({ ...prev, room: mappingRoomFilter }));
+      }
+  }, [mappingRoomFilter]);
+
+  useEffect(() => {
+      if (mappingSessionFilter !== 'ALL') {
+          setMappingEditForm(prev => ({ ...prev, session: mappingSessionFilter }));
+      }
+  }, [mappingSessionFilter]);
 
   const toggleSelectAllMapping = (checked: boolean) => {
       if (checked) {
@@ -4203,10 +4229,18 @@ ANS: B`;
                                                   ) : '-'}
                                               </td>
                                               <td className="p-3">
-                                                  {m?.room ? <span className="text-xs font-bold text-green-700 bg-green-50 px-2 py-1 rounded">{m.room}</span> : '-'}
+                                                  {m?.room ? (
+                                                      <span className="text-xs font-bold text-green-700 bg-green-50 px-2 py-1 rounded">{m.room}</span>
+                                                  ) : u.room ? (
+                                                      <span className="text-xs text-gray-400 italic">({u.room})</span>
+                                                  ) : '-'}
                                               </td>
                                               <td className="p-3">
-                                                  {m?.session ? <span className="text-xs font-bold text-purple-700 bg-purple-50 px-2 py-1 rounded">{m.session}</span> : '-'}
+                                                  {m?.session ? (
+                                                      <span className="text-xs font-bold text-purple-700 bg-purple-50 px-2 py-1 rounded">{m.session}</span>
+                                                  ) : u.session ? (
+                                                      <span className="text-xs text-gray-400 italic">({u.session})</span>
+                                                  ) : '-'}
                                               </td>
                                           </tr>
                                       );
