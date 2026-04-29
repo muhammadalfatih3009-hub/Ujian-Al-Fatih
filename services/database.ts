@@ -240,6 +240,11 @@ export const db = {
           await supabase.from('results').update({ status: 'finished' }).eq('status', 'working');
       }
   },
+  forceFinishBatch: async (studentIds: string[], examId?: string) => {
+      let query = supabase.from('results').update({ status: 'finished' }).in('peserta_id', studentIds).eq('status', 'working');
+      if (examId) query = query.eq('exam_id', examId);
+      await query;
+  },
   updateExamMapping: async (
       id: string, 
       token: string, 

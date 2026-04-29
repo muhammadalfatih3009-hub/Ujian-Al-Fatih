@@ -1156,11 +1156,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
   };
 
   const handleForceFinishAll = async () => {
-      showConfirm("Anda yakin ingin memaksa semua peserta yang sedang mengerjakan untuk selesai?", async () => {
+      // PROKTOR AWARE: Only finish students currently in view (filtered)
+      const workingUsers = finalMonitoringUsers.filter(u => {
+          const info = getStudentStatusInfo(u);
+          return info.label === 'Mengerjakan' || u.status === 'working';
+      });
+
+      if (workingUsers.length === 0) {
+          return showToast("Tidak ada peserta yang sedang mengerjakan di filter ini.", 'info');
+      }
+
+      showConfirm(`Anda yakin ingin memaksa ${workingUsers.length} peserta yang sedang mengerjakan (dalam filter ini) untuk selesai?`, async () => {
           setIsLoadingData(true);
           try {
-              await db.forceFinishAllWorking(monitoringExamId || undefined);
-              showToast("Berhasil memaksa selesai semua peserta yang sedang mengerjakan.");
+              const ids = workingUsers.map(u => u.id);
+              await db.forceFinishBatch(ids, monitoringExamId || undefined);
+              showToast(`Berhasil memaksa selesai ${workingUsers.length} peserta.`);
               await loadData();
           } catch (e: any) {
               showToast(e.message || "Gagal memaksa selesai", 'error');
@@ -3535,7 +3546,7 @@ ANS: B`;
                   <NavItem id="CETAK_KARTU" label="Cetak Kartu" icon={Printer} />
               )}
               
-              {(user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN || user.role === UserRole.PENGAWAS) && (
+              {(user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN || user.role === UserRole.PROKTOR || user.role === UserRole.PENGAWAS) && (
                   <NavItem id="DAFTAR_HADIR" label="Cetak Daftar Hadir" icon={FileText} />
               )}
               
