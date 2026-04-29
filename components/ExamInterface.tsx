@@ -694,13 +694,9 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
         await db.submitResult(result);
         setShowConfirmFinishModal(false);
         
-        if (settings.showScoreToStudents) {
-            setLastScore(score);
-            setShowResultStats(true);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        } else {
-            onComplete();
-        }
+        setLastScore(score);
+        setShowResultStats(true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error: any) {
         console.error("Failed to submit exam:", error);
         alert(`Gagal menyimpan jawaban: ${error.message || 'Terjadi kesalahan'}. Silakan coba lagi.`);
@@ -738,13 +734,15 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
 
                   {/* Score Stats */}
                   <div className="px-8 pb-8 pt-6">
-                      <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 flex flex-col items-center mb-6">
-                          <p className="text-xs uppercase tracking-widest font-bold text-gray-400 mb-2">Skor Anda</p>
-                          <div className="flex items-baseline">
-                              <span className="text-7xl font-black text-gray-800 tracking-tighter" style={{ color: themeColor }}>{lastScore}</span>
-                              <span className="text-xl font-bold text-gray-400 ml-2">/ 100</span>
+                      {settings.showScoreToStudents && (
+                          <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 flex flex-col items-center mb-6">
+                              <p className="text-xs uppercase tracking-widest font-bold text-gray-400 mb-2">Skor Anda</p>
+                              <div className="flex items-baseline">
+                                  <span className="text-7xl font-black text-gray-800 tracking-tighter" style={{ color: themeColor }}>{lastScore}</span>
+                                  <span className="text-xl font-bold text-gray-400 ml-2">/ 100</span>
+                              </div>
                           </div>
-                      </div>
+                      )}
 
                       <div className="grid grid-cols-2 gap-4 mb-8">
                           <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100/50 flex flex-col items-center">
